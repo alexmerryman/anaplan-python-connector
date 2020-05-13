@@ -66,9 +66,13 @@ postExport = requests.post(url,
                            headers=postHeaders,
                            data=json.dumps({'localeName': 'en_US'}))
 
+conn = AnaplanConnection(anaplan.generate_authorization("Basic",user, password), wGuid, mGuid)
+
 print(postExport.status_code)
 print(postExport.text)
 with open('postExport.json', 'wb') as f:
     f.write(postExport.text.encode('utf-8'))
 
 print(postExport.text)
+
+download = get_file(conn)
