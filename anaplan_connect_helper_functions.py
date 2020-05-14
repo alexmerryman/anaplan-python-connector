@@ -1,5 +1,6 @@
 import requests
 import base64
+import re
 
 
 def anaplan_basic_auth_user(user_email, user_pwd):
@@ -8,8 +9,26 @@ def anaplan_basic_auth_user(user_email, user_pwd):
     return basic_auth_user
 
 
-def anaplan_token_auth(token):
-    return
+def anaplan_create_token(user_email, user_pwd):
+    r = requests.post("https://auth.anaplan.com/token/authenticate",
+                      data={'user': f'{user_email}:{user_pwd}'},
+                      auth=(user_email, user_pwd))
+    return r
+
+
+def anaplan_token_auth_user(token):
+    token_auth_user = f'AnaplanAuthToken {token}'
+    print(token_auth_user)
+    return token_auth_user
+
+
+# TODO:
+def anaplan_token_refresh(token):
+    r = requests.post("https://auth.anaplan.com/token/refresh",
+                      data={'H'},
+                      auth=())
+    return r
+
 
 def get_workspaces(user):
     """
@@ -104,7 +123,15 @@ def get_chunk_data(wGuid, mGuid, fileID, chunkID, user):
     return chunk_data
 
 
-def get_imports(wGuid, mGuid, user):
+def parse_chunk_data(chunk_data):
+    # newline = new row
+    # comma-separated
+    print(chunk_data)
+    # for char in chunk_data:
+    #     print(char, '|')
+
+
+def get_model_imports(wGuid, mGuid, user):
     getHeaders = {
         'Authorization': user
     }
@@ -115,7 +142,7 @@ def get_imports(wGuid, mGuid, user):
     return model_imports
 
 
-def get_exports(wGuid, mGuid, user):
+def get_model_exports(wGuid, mGuid, user):
     getHeaders = {
         'Authorization': user
     }
@@ -126,7 +153,19 @@ def get_exports(wGuid, mGuid, user):
     return model_exports
 
 
-def get_actions(wGuid, mGuid, user):
+def get_export_data(wGuid, mGuid, exportId, user):
+    getHeaders = {
+        'Authorization': user
+    }
+
+    export_data = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports/{exportId}',
+                               headers=getHeaders)
+
+    return export_data
+
+
+
+def get_model_actions(wGuid, mGuid, user):
     getHeaders = {
         'Authorization': user
     }
@@ -137,7 +176,7 @@ def get_actions(wGuid, mGuid, user):
     return model_actions
 
 
-def get_processes(wGuid, mGuid, user):
+def get_model_processes(wGuid, mGuid, user):
     getHeaders = {
         'Authorization': user
     }

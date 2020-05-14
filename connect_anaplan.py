@@ -22,8 +22,24 @@ user_email = 'Anthony.Severini@teklink.com'
 user_pwd = 'Steelerssoccera1219_1'
 basic_auth_user = anaplan_connect_helper_functions.anaplan_basic_auth_user(user_email, user_pwd)
 
-auth_token = '5Y6tPNuDwSKzlJt9ulStGw==.n947r77aE06ho8E46m0iLm1Z0X/p29PfnXeTBXqc4kKCgp75K4yUTTtptgKQYH7q4AHgokvIdSEpOUdJkYaOBGypTRpo/qp71RZ6/96hxdqqzVZo5Ma8pfPOPZ/PzSdWk6jZUmHeQsdb6wa9pPUg23d3foNjpsD27UH0fVyTy0pszr5DTClPGq1wEBQhCHYCMkLVVXMJq1yUUDqFQVmQH4eyhat/guuEn0O1yVIlD9c6FyDwBcRL7nXRYRo+ZbWh/xSs8+/fOoNYW3z+9TMLNIUZyQziBK5cLt7Ym+UUczxhvAYvIwnB00vOlelMc4t4NAPwoyTG8eRVjjfDa7oZRIq0w7vfjgYMiy0oBWCr0GR9dfDakjV5r/eMt6W+GmDt+RI10XDO3zF+Q0kY5Opq4xChJ7qZ//uxR3yli5keObr1+Ev3/H0Ate3zeuXUvQGzQHeZzs+Ahtx5BzFZa0ghNL1CyyYZLcxNTmsfrugvYAm9roz6qMow5cfxlMNa0aPX.Chs5rJ+qifx+CTgBN7c601lkvwDVl94haeM5plraudk='
-token_auth_user = f'AnaplanAuthToken {auth_token}'
+# Anaplan API v2.x require token-based authentication rather than basic user:pwd authentication
+# (reference: https://anaplanauthentication.docs.apiary.io/#reference/authentication-token)
+try:
+    token = anaplan_connect_helper_functions.anaplan_create_token(user_email, user_pwd)
+    # print('TOKEN TEXT:', token.text)
+    # print('TOKEN STATUS CODE:', token.status_code)
+except:
+    token = None
+    print('ERROR: Unable to create auth token.')
+if token.status_code == 201:
+    try:
+        token_json = token.json()
+        token_val = str(token_json['tokenInfo']['tokenValue'])
+        token_auth_user = anaplan_connect_helper_functions.anaplan_token_auth_user(token_val)
+    except:
+        print('ERROR: Invalid token.')
+else:
+    print('ERROR: Auth token creation failed - status code:', token.status_code)
 
 # TODO: redo exportData (below)
 # Replace with your export metadata
@@ -66,7 +82,7 @@ else:
 
 print('------------------- MODEL EXPORTS -------------------')
 try:
-    model_exports = anaplan_connect_helper_functions.get_exports(wGuid, mGuid, token_auth_user)
+    model_exports = anaplan_connect_helper_functions.get_model_exports(wGuid, mGuid, token_auth_user)
     model_exports_data = json.loads(model_exports.text)
 except:
     print('ERROR: Unable to get model files.')
@@ -75,6 +91,11 @@ if model_exports.status_code == 200:
 else:
     print('Error: Status Code {}'.format(model_exports.status_code))
 
+# TODO: blocked by inadequate schema in Anaplan (for test table)
+# ref: https://community.anaplan.com/t5/Best-Practices/RESTful-API-Best-Practices/ta-p/33579 (https://vimeo.com/318242332)
+test_export_id = '116000000002'
+test_export_data = anaplan_connect_helper_functions.get_export_data(wGuid, mGuid, test_export_id, token_auth_user)
+print(json.loads(test_export_data.text))
 
 # print('------------------- MODEL IMPORTS -------------------')
 # try:
@@ -109,7 +130,7 @@ try:
     chunk_metadata = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid, PYC01_test_file_id, token_auth_user)
     chunk_metadata_data = json.loads(chunk_metadata.text)
 except:
-    print('ERROR: Unable to get model files.')
+    print('ERROR: Unable to get file info (chunk metadata).')
 if chunk_metadata.status_code == 200:
     print(chunk_metadata_data)
 else:
@@ -119,31 +140,26 @@ else:
 print('------------------- CHUNK INFO -------------------')
 for c in chunk_metadata_data['chunks']:
     print('Chunk name, ID:', c['name'], ',', c['id'])
-PYC01_test_chunk_id = '0'
-try:
-    chunk_data = anaplan_connect_helper_functions.get_chunk_data(wGuid,
-                                                                 mGuid,
-                                                                 PYC01_test_file_id,
-                                                                 PYC01_test_chunk_id,
-                                                                 token_auth_user)
-    print(chunk_data.url)
-    chunk_data_data = json.loads(chunk_data.text)
-except:
-    print('ERROR: Unable to get specified chunk.')
-if chunk_data.status_code == 200:
-    print(chunk_data_data)
-else:
-    print('Error: Status Code {}'.format(chunk_data.status_code))
+    try:
+        chunk_data = anaplan_connect_helper_functions.get_chunk_data(wGuid,
+                                                                     mGuid,
+                                                                     PYC01_test_file_id,
+                                                                     c['id'],
+                                                                     token_auth_user)
+        # print(chunk_data.url)
+        # print(chunk_data.status_code)
+        # print(chunk_data.text)
+        # print(type(chunk_data.text))
+        chunk_data_text = chunk_data.text
+    except:
+        print('ERROR: Unable to get specified chunk.')
+    if chunk_data.status_code == 200:
+        print(chunk_data_text)
+        anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
+    else:
+        print('Error: Status Code {}'.format(chunk_data.status_code))
 
 
-
-
-# print('--------------------------------------------------------------------------------')
-# import requests
-# PYC01_export_test_id = '116000000000'
-#
-# print(json.loads(requests.get(f'https://api.anaplan.com/1/3/workspaces/{wGuid}/models/{mGuid}/files/{PYC01_export_test_id}/chunks',
-#                    headers={'Authorization': basic_auth_user})).text)
 
 
 
