@@ -8,6 +8,9 @@ def anaplan_basic_auth_user(user_email, user_pwd):
     return basic_auth_user
 
 
+def anaplan_token_auth(token):
+    return
+
 def get_workspaces(user):
     """
     This script returns all workspaces the `user` has access to.
@@ -22,7 +25,7 @@ def get_workspaces(user):
         'Authorization': user
     }
 
-    workspaces = requests.get('https://api.anaplan.com/1/3/workspaces',
+    workspaces = requests.get('https://api.anaplan.com/2/0/workspaces',
                               headers=getHeaders)
 
     return workspaces
@@ -41,7 +44,7 @@ def get_model_info(mGuid, user):
         'Authorization': user
     }
 
-    model_info = requests.get(f'https://api.anaplan.com/1/3/models/{mGuid}',
+    model_info = requests.get(f'https://api.anaplan.com/2/0/models/{mGuid}',
                               headers=getHeaders)
 
     return model_info
@@ -52,13 +55,13 @@ def get_model_files(wGuid, mGuid, user):
         'Authorization': user
     }
 
-    model_files = requests.get(f'https://api.anaplan.com/1/3/workspaces/{wGuid}/' + f'models/{mGuid}/files',
+    model_files = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/files',
                                headers=getHeaders)
 
     return model_files
 
 
-def get_chunk_data(wGuid, mGuid, fileID, user):
+def get_chunk_metadata(wGuid, mGuid, fileID, user):
     """
     Returns the metadata for each chunk in a file.
 
@@ -72,8 +75,30 @@ def get_chunk_data(wGuid, mGuid, fileID, user):
         'Authorization': user
     }
 
-    chunk_data = requests.get('https://api.anaplan.com/1/3/workspaces/'
-                              + f'{wGuid}/models/{mGuid}/files/{fileID}' + '/chunks',
+    chunk_metadata = requests.get('https://api.anaplan.com/2/0/workspaces/'
+                                  + f'{wGuid}/models/{mGuid}/files/{fileID}/chunks',
+                                  headers=getHeaders)
+
+    return chunk_metadata
+
+
+def get_chunk_data(wGuid, mGuid, fileID, chunkID, user):
+    """
+    Returns the metadata for each chunk in a file.
+
+    :param wGuid:
+    :param mGuid:
+    :param fileID:
+    :param chunkID:
+    :param user:
+    :return:
+    """
+    getHeaders = {
+        'Authorization': user
+    }
+
+    chunk_data = requests.get('https://api.anaplan.com/2/0/workspaces/'
+                              + f'{wGuid}/models/{mGuid}/files/{fileID}/chunks/{chunkID}',
                               headers=getHeaders)
 
     return chunk_data
@@ -84,7 +109,7 @@ def get_imports(wGuid, mGuid, user):
         'Authorization': user
     }
 
-    model_imports = requests.get(f'https://api.anaplan.com/1/3/workspaces/{wGuid}/' + f'models/{mGuid}/imports',
+    model_imports = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/imports',
                                  headers=getHeaders)
 
     return model_imports
@@ -95,7 +120,7 @@ def get_exports(wGuid, mGuid, user):
         'Authorization': user
     }
 
-    model_exports = requests.get(f'https://api.anaplan.com/1/3/workspaces/{wGuid}/' + f'models/{mGuid}/exports',
+    model_exports = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports',
                                  headers=getHeaders)
 
     return model_exports
@@ -106,7 +131,7 @@ def get_actions(wGuid, mGuid, user):
         'Authorization': user
     }
 
-    model_actions = requests.get(f'https://api.anaplan.com/1/3/workspaces/{wGuid}/' + f'models/{mGuid}/actions',
+    model_actions = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/actions',
                                  headers=getHeaders)
 
     return model_actions
@@ -117,7 +142,7 @@ def get_processes(wGuid, mGuid, user):
         'Authorization': user
     }
 
-    model_processes = requests.get(f'https://api.anaplan.com/1/3/workspaces/{wGuid}/' + f'models/{mGuid}/processes',
+    model_processes = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/processes',
                                    headers=getHeaders)
 
     return model_processes
