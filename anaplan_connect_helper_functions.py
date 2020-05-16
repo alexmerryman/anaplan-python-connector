@@ -1,5 +1,6 @@
 import requests
 import base64
+import json
 import re
 
 
@@ -18,12 +19,12 @@ def anaplan_create_token(user_email, user_pwd):
 
 def anaplan_token_auth_user(token):
     token_auth_user = f'AnaplanAuthToken {token}'
-    print(token_auth_user)
+    # print(token_auth_user)
     return token_auth_user
 
 
-# TODO:
 def anaplan_token_refresh(token):
+    # TODO
     r = requests.post("https://auth.anaplan.com/token/refresh",
                       data={'H'},
                       auth=())
@@ -32,7 +33,7 @@ def anaplan_token_refresh(token):
 
 def get_workspaces(user):
     """
-    This script returns all workspaces the `user` has access to.
+    This script returns all workspaces which `user` has access to.
 
     If you are using certificate authentication, this script assumes you have converted your Anaplan certificate to
     PEM format, and that you know the Anaplan account email associated with that certificate.
@@ -44,10 +45,19 @@ def get_workspaces(user):
         'Authorization': user
     }
 
-    workspaces = requests.get('https://api.anaplan.com/2/0/workspaces',
-                              headers=getHeaders)
+    try:
+        workspaces_response = requests.get('https://api.anaplan.com/2/0/workspaces',
+                                           headers=getHeaders)
+        # print(workspaces_response.status_code)
+        workspaces_json = json.loads(workspaces_response.text)
+    except:
+        print('ERROR: Unable to get workspaces via API.')
 
-    return workspaces
+    if workspaces_response.status_code == 200:
+        return workspaces_response, workspaces_json
+    else:
+        print('Error: Status Code {}'.format(workspaces_json.status_code))
+        return None, None  # TODO
 
 
 def get_model_info(mGuid, user):
@@ -63,10 +73,18 @@ def get_model_info(mGuid, user):
         'Authorization': user
     }
 
-    model_info = requests.get(f'https://api.anaplan.com/2/0/models/{mGuid}',
-                              headers=getHeaders)
+    try:
+        model_info_response = requests.get(f'https://api.anaplan.com/2/0/models/{mGuid}',
+                                           headers=getHeaders)
+        model_info_json = json.loads(model_info_response.text)
+    except:
+        print('ERROR: Unable to get model info via API.')
 
-    return model_info
+    if model_info_response.status_code == 200:
+        return model_info_response, model_info_json
+    else:
+        print('Error: Status Code {}'.format(model_info_response.status_code))
+        return None, None  # TODO
 
 
 def get_model_files(wGuid, mGuid, user):
@@ -74,12 +92,21 @@ def get_model_files(wGuid, mGuid, user):
         'Authorization': user
     }
 
-    model_files = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/files',
-                               headers=getHeaders)
+    try:
+        model_files_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/files',
+                                            headers=getHeaders)
+        model_files_json = json.loads(model_files_response.text)
+    except:
+        print('ERROR: Unable to get model files via API.')
 
-    return model_files
+    if model_files_response.status_code == 200:
+        return model_files_response, model_files_json
+    else:
+        print('Error: Status Code {}'.format(model_files_response.status_code))
+        return None, None  # TODO
 
 
+# TODO: Refactor helper function argument names per PEP8
 def get_chunk_metadata(wGuid, mGuid, fileID, user):
     """
     Returns the metadata for each chunk in a file.
@@ -90,15 +117,24 @@ def get_chunk_metadata(wGuid, mGuid, fileID, user):
     :param user:
     :return:
     """
+    # TODO: Refactor helper function header variable name per PEP8
     getHeaders = {
         'Authorization': user
     }
 
-    chunk_metadata = requests.get('https://api.anaplan.com/2/0/workspaces/'
-                                  + f'{wGuid}/models/{mGuid}/files/{fileID}/chunks',
-                                  headers=getHeaders)
+    try:
+        chunk_metadata_response = requests.get('https://api.anaplan.com/2/0/workspaces/'
+                                               + f'{wGuid}/models/{mGuid}/files/{fileID}/chunks',
+                                               headers=getHeaders)
+        chunk_metadata_json = json.loads(chunk_metadata_response.text)
+    except:
+        print('ERROR: Unable to get file info (chunk metadata) via API.')
 
-    return chunk_metadata
+    if chunk_metadata_response.status_code == 200:
+        return chunk_metadata_response, chunk_metadata_json
+    else:
+        print('Error: Status Code {}'.format(chunk_metadata_response.status_code))
+        return None, None  # TODO
 
 
 def get_chunk_data(wGuid, mGuid, fileID, chunkID, user):
@@ -116,14 +152,23 @@ def get_chunk_data(wGuid, mGuid, fileID, chunkID, user):
         'Authorization': user
     }
 
-    chunk_data = requests.get('https://api.anaplan.com/2/0/workspaces/'
-                              + f'{wGuid}/models/{mGuid}/files/{fileID}/chunks/{chunkID}',
-                              headers=getHeaders)
+    try:
+        chunk_data_response = requests.get('https://api.anaplan.com/2/0/workspaces/'
+                                           + f'{wGuid}/models/{mGuid}/files/{fileID}/chunks/{chunkID}',
+                                           headers=getHeaders)
+        chunk_data_text = chunk_data_response.text
+    except:
+        print('ERROR: Unable to get chunk data via API.')
 
-    return chunk_data
+    if chunk_data_response.status_code == 200:
+        return chunk_data_response, chunk_data_text
+    else:
+        print('Error: Status Code {}'.format(chunk_data_response.status_code))
+        return None, None  # TODO
 
 
 def parse_chunk_data(chunk_data):
+    # TODO ?
     # newline = new row
     # comma-separated
     print(chunk_data)
@@ -136,10 +181,18 @@ def get_model_imports(wGuid, mGuid, user):
         'Authorization': user
     }
 
-    model_imports = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/imports',
-                                 headers=getHeaders)
+    try:
+        model_imports_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/imports',
+                                              headers=getHeaders)
+        model_imports_data = json.loads(model_imports_response.text)
+    except:
+        print('ERROR: Unable to get model imports via API.')
 
-    return model_imports
+    if model_imports_response.status_code == 200:
+        return model_imports_response, model_imports_data
+    else:
+        print('Error: Status Code {}'.format(model_imports_response.status_code))
+        return None, None  # TODO
 
 
 def get_model_exports(wGuid, mGuid, user):
@@ -147,10 +200,17 @@ def get_model_exports(wGuid, mGuid, user):
         'Authorization': user
     }
 
-    model_exports = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports',
-                                 headers=getHeaders)
-
-    return model_exports
+    try:
+        model_exports_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports',
+                                              headers=getHeaders)
+        model_exports_json = json.loads(model_exports_response.text)
+    except:
+        print('ERROR: Unable to get model exports via API.')
+    if model_exports_response.status_code == 200:
+        return model_exports_response, model_exports_json
+    else:
+        print('Error: Status Code {}'.format(model_exports_response.status_code))
+        return None, None  # TODO
 
 
 def get_export_data(wGuid, mGuid, exportId, user):
@@ -158,11 +218,18 @@ def get_export_data(wGuid, mGuid, exportId, user):
         'Authorization': user
     }
 
-    export_data = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports/{exportId}',
-                               headers=getHeaders)
+    try:
+        export_data_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports/{exportId}',
+                                            headers=getHeaders)
+        export_data_json = json.loads(export_data_response.text)
+    except:
+        print('ERROR: Unable to get export data via API.')
 
-    return export_data
-
+    if export_data_response.status_code == 200:
+        return export_data_response, export_data_json
+    else:
+        print('Error: Status Code {}'.format(export_data_response.status_code))
+        return None, None  # TODO
 
 
 def get_model_actions(wGuid, mGuid, user):
@@ -170,10 +237,18 @@ def get_model_actions(wGuid, mGuid, user):
         'Authorization': user
     }
 
-    model_actions = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/actions',
-                                 headers=getHeaders)
+    try:
+        model_actions_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/actions',
+                                              headers=getHeaders)
+        model_actions_json = json.loads(model_actions_response.text)
+    except:
+        print('ERROR: Unable to get model actions via API.')
 
-    return model_actions
+    if model_actions_response.status_code == 200:
+        return model_actions_response, model_actions_json
+    else:
+        print('Error: Status Code {}'.format(model_actions_response.status_code))
+        return None, None  # TODO
 
 
 def get_model_processes(wGuid, mGuid, user):
@@ -181,8 +256,15 @@ def get_model_processes(wGuid, mGuid, user):
         'Authorization': user
     }
 
-    model_processes = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/processes',
-                                   headers=getHeaders)
+    try:
+        model_processes_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/processes',
+                                                headers=getHeaders)
+        model_processes_json = json.loads(model_processes_response.text)
+    except:
+        print('ERROR: Unable to get model processes via API.')
 
-    return model_processes
-
+    if model_processes_response.status_code == 200:
+        return model_processes_response, model_processes_json
+    else:
+        print('Error: Status Code {}'.format(model_processes_response.status_code))
+        return None, None  # TODO
