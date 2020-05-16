@@ -87,6 +87,99 @@ def get_model_info(mGuid, user):
         return None, None  # TODO
 
 
+def get_model_imports(wGuid, mGuid, user):
+    getHeaders = {
+        'Authorization': user
+    }
+
+    try:
+        model_imports_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/imports',
+                                              headers=getHeaders)
+        model_imports_data = json.loads(model_imports_response.text)
+    except:
+        print('ERROR: Unable to get model imports via API.')
+
+    if model_imports_response.status_code == 200:
+        return model_imports_response, model_imports_data
+    else:
+        print('Error: Status Code {}'.format(model_imports_response.status_code))
+        return None, None  # TODO
+
+
+def get_model_exports(wGuid, mGuid, user):
+    getHeaders = {
+        'Authorization': user
+    }
+
+    try:
+        model_exports_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports',
+                                              headers=getHeaders)
+        model_exports_json = json.loads(model_exports_response.text)
+    except:
+        print('ERROR: Unable to get model exports via API.')
+    if model_exports_response.status_code == 200:
+        return model_exports_response, model_exports_json
+    else:
+        print('Error: Status Code {}'.format(model_exports_response.status_code))
+        return None, None  # TODO
+
+
+def get_export_data(wGuid, mGuid, exportId, user):
+    getHeaders = {
+        'Authorization': user
+    }
+
+    try:
+        export_data_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports/{exportId}',
+                                            headers=getHeaders)
+        export_data_json = json.loads(export_data_response.text)
+    except:
+        print('ERROR: Unable to get export data via API.')
+
+    if export_data_response.status_code == 200:
+        return export_data_response, export_data_json
+    else:
+        print('Error: Status Code {}'.format(export_data_response.status_code))
+        return None, None  # TODO
+
+
+def post_export_task(wGuid, mGuid, exportId, user):
+    post_headers = {'Authorization': user,
+                    'Content-Type': 'application/json'
+                    }
+    try:
+        post_export_task_response = requests.post(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports/{exportId}/tasks',
+                                                  headers=post_headers,
+                                                  data=json.dumps({'localeName': 'en_US'}))
+        post_export_task_json = json.loads(post_export_task_response.text)
+    except:
+        print('ERROR: Unable to post export task via API.')
+
+    if post_export_task_response.status_code == 200:
+        return post_export_task_response, post_export_task_json
+    else:
+        print('Error: Status Code {}'.format(post_export_task_response.status_code))
+        return None, None  # TODO
+
+
+def get_export_task_details(wGuid, mGuid, exportId, taskId, user):
+    get_headers = {'Authorization': user
+                   }
+    try:
+        task_details_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports/{exportId}/tasks/{taskId}',
+                                             headers=get_headers)
+
+        task_details_json = json.loads(task_details_response.text)
+    except:
+        print('ERROR: Unable to get export task details via API.')
+
+    if task_details_response.status_code == 200:
+        return task_details_response, task_details_json
+    else:
+        print('Error: Status Code {}'.format(task_details_response.status_code))
+        return None, None  # TODO
+
+
 def get_model_files(wGuid, mGuid, user):
     getHeaders = {
         'Authorization': user
@@ -149,7 +242,8 @@ def get_chunk_data(wGuid, mGuid, fileID, chunkID, user):
     :return:
     """
     getHeaders = {
-        'Authorization': user
+        'Authorization': user,
+        'Accept': 'application/octet-stream'
     }
 
     try:
@@ -168,68 +262,19 @@ def get_chunk_data(wGuid, mGuid, fileID, chunkID, user):
 
 
 def parse_chunk_data(chunk_data):
-    # TODO ?
+    # TODO -- parse as text? or CSV? or table?
     # newline = new row
     # comma-separated
     print(chunk_data)
+    chunk_data_newline_array = chunk_data.splitlines()
+    print(chunk_data_newline_array)
+    for s in chunk_data_newline_array:
+        print(s)
+        print(s.split(','))
+    # split into rows
+    # str split by ','
     # for char in chunk_data:
     #     print(char, '|')
-
-
-def get_model_imports(wGuid, mGuid, user):
-    getHeaders = {
-        'Authorization': user
-    }
-
-    try:
-        model_imports_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/imports',
-                                              headers=getHeaders)
-        model_imports_data = json.loads(model_imports_response.text)
-    except:
-        print('ERROR: Unable to get model imports via API.')
-
-    if model_imports_response.status_code == 200:
-        return model_imports_response, model_imports_data
-    else:
-        print('Error: Status Code {}'.format(model_imports_response.status_code))
-        return None, None  # TODO
-
-
-def get_model_exports(wGuid, mGuid, user):
-    getHeaders = {
-        'Authorization': user
-    }
-
-    try:
-        model_exports_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports',
-                                              headers=getHeaders)
-        model_exports_json = json.loads(model_exports_response.text)
-    except:
-        print('ERROR: Unable to get model exports via API.')
-    if model_exports_response.status_code == 200:
-        return model_exports_response, model_exports_json
-    else:
-        print('Error: Status Code {}'.format(model_exports_response.status_code))
-        return None, None  # TODO
-
-
-def get_export_data(wGuid, mGuid, exportId, user):
-    getHeaders = {
-        'Authorization': user
-    }
-
-    try:
-        export_data_response = requests.get(f'https://api.anaplan.com/2/0/workspaces/{wGuid}/models/{mGuid}/exports/{exportId}',
-                                            headers=getHeaders)
-        export_data_json = json.loads(export_data_response.text)
-    except:
-        print('ERROR: Unable to get export data via API.')
-
-    if export_data_response.status_code == 200:
-        return export_data_response, export_data_json
-    else:
-        print('Error: Status Code {}'.format(export_data_response.status_code))
-        return None, None  # TODO
 
 
 def get_model_actions(wGuid, mGuid, user):

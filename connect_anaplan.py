@@ -1,5 +1,6 @@
 import json
 import anaplan_connect_helper_functions
+import pandas as pd
 
 # Ref: HTTP Status Codes: https://www.restapitutorial.com/httpstatuscodes.html
 
@@ -59,7 +60,7 @@ print('------------------- ALL MODEL EXPORTS -------------------')
 model_exports_response, model_exports_json = anaplan_connect_helper_functions.get_model_exports(wGuid, mGuid, token_auth_user)
 print(model_exports_json)
 
-print('------------------- POST EXPORT REQUEST -------------------')
+print('------------------- GET EXPORT DATA -------------------')
 # TODO: blocked by inadequate schema in Anaplan (for test table)
 # ref: https://community.anaplan.com/t5/Best-Practices/RESTful-API-Best-Practices/ta-p/33579 (https://vimeo.com/318242332)
 anaplan_param_export_id = '116000000005'
@@ -70,15 +71,35 @@ print(anaplan_param_export_data_json['exportMetadata']['rowCount'])
 print(anaplan_param_export_data_json['exportMetadata']['exportFormat'])
 print(anaplan_param_export_data_json['exportMetadata']['delimiter'])
 
-# # Runs an export request, and returns task metadata to 'postExport.json'
-# try:
-#     postExport = requests.post(url,
-#                                headers=postHeaders,
-#                                data=json.dumps({'localeName': 'en_US'}))
-# except:
-#     print('ERROR: Post failed. Status code: {}.'.format(postExport.status_code))
+print('------------------- CREATE (POST) EXPORT TASK -------------------')
+anaplan_param_export_task_response, anaplan_param_export_task_json = anaplan_connect_helper_functions.post_export_task(wGuid, mGuid, anaplan_param_export_id, token_auth_user)
+print(anaplan_param_export_task_json)
+print(anaplan_param_export_task_json['task']['taskId'])
+print(anaplan_param_export_task_json['task']['taskState'])
 
+print('------------------- GET EXPORT TASK DETAILS -------------------')
+anaplan_param_export_task_details_response, anaplan_param_export_task_details_json = anaplan_connect_helper_functions.get_export_task_details(wGuid, mGuid, anaplan_param_export_id, anaplan_param_export_task_json['task']['taskId'], token_auth_user)
+print(anaplan_param_export_task_details_json)
+print(anaplan_param_export_task_details_json['task']['taskState'])
 
+# Once 'taskState' == 'COMPLETE', run get_files()
+print('------------------- ALL MODEL FILES -------------------')
+model_files__response, model_files_json = anaplan_connect_helper_functions.get_model_files(wGuid, mGuid, token_auth_user)
+print(model_files_json)
+# Then, get all chunks
+
+print('------------------- FILE INFO (CHUNK METADATA) -------------------')
+chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid, anaplan_param_export_id, token_auth_user)
+print(chunk_metadata_json)
+
+print('------------------- CHUNK INFO -------------------')
+for c in chunk_metadata_json['chunks']:
+    print('Chunk name, ID:', c['name'], ',', c['id'])
+    chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid, anaplan_param_export_id, c['id'], token_auth_user)
+    # print(chunk_data.url)
+    # print(chunk_data.status_code)
+    print(chunk_data_text)
+    anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
 
 
 
@@ -87,27 +108,6 @@ print(anaplan_param_export_data_json['exportMetadata']['delimiter'])
 # print('------------------- ALL MODEL IMPORTS -------------------')
 # model_files__response, model_imports_json = anaplan_connect_helper_functions.get_model_imports(wGuid, mGuid, token_auth_user)
 # print(model_imports_json)
-#
-# print('------------------- ALL MODEL FILES -------------------')
-# model_files__response, model_files_json = anaplan_connect_helper_functions.get_model_files(wGuid, mGuid, token_auth_user)
-# print(model_files_json)
-#
-# print('------------------- FILE INFO (CHUNK METADATA) -------------------')
-# PYC01_test_file_id = '116000000000'
-# print('FILE ID:', PYC01_test_file_id)
-# chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid, PYC01_test_file_id, token_auth_user)
-# print(chunk_metadata_json)
-#
-# print('------------------- CHUNK INFO -------------------')
-# for c in chunk_metadata_json['chunks']:
-#     print('Chunk name, ID:', c['name'], ',', c['id'])
-#     chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid, PYC01_test_file_id, c['id'], token_auth_user)
-#     # print(chunk_data.url)
-#     # print(chunk_data.status_code)
-#     # anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
-#     print(chunk_data_text)
-#
-#
 # print('------------------- MODEL ACTIONS -------------------')
 # model_actions_response, model_actions_json = anaplan_connect_helper_functions.get_actions(wGuid, mGuid, basic_auth_user)
 # print(model_actions_json)
