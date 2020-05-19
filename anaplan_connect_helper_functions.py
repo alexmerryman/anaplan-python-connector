@@ -11,15 +11,38 @@ def anaplan_basic_auth_user(user_email, user_pwd):
 
 
 def anaplan_create_token(user_email, user_pwd):
-    r = requests.post("https://auth.anaplan.com/token/authenticate",
-                      data={'user': f'{user_email}:{user_pwd}'},
-                      auth=(user_email, user_pwd))
-    return r
+    try:
+        token = requests.post("https://auth.anaplan.com/token/authenticate",
+                              data={'user': f'{user_email}:{user_pwd}'},
+                              auth=(user_email, user_pwd))
+    except:
+        token = None  # TODO?
+        print('ERROR: Unable to create auth token.')
+
+    return token
 
 
 def anaplan_token_auth_user(token):
     token_auth_user = f'AnaplanAuthToken {token}'
     # print(token_auth_user)
+    return token_auth_user
+
+
+def generate_token_auth_user(user_email, user_pwd):
+    token = anaplan_create_token(user_email, user_pwd)
+    # print('TOKEN TEXT:', token.text)
+    # print('TOKEN STATUS CODE:', token.status_code)
+    if token.status_code == 201:
+        try:
+            token_json = token.json()
+            token_val = str(token_json['tokenInfo']['tokenValue'])
+        except:
+            token_val = None
+            print("ERROR: Unable to jsonify token, and/or unable to retrieve ['tokenInfo']['tokenValue'] from token")
+        token_auth_user = anaplan_token_auth_user(token_val)
+    else:
+        print('ERROR: Auth token creation failed - status code:', token.status_code)
+
     return token_auth_user
 
 
@@ -262,19 +285,16 @@ def get_chunk_data(wGuid, mGuid, fileID, chunkID, user):
 
 
 def parse_chunk_data(chunk_data):
-    # TODO -- parse as text? or CSV? or table?
-    # newline = new row
-    # comma-separated
-    print(chunk_data)
-    chunk_data_newline_array = chunk_data.splitlines()
-    print(chunk_data_newline_array)
-    for s in chunk_data_newline_array:
-        print(s)
-        print(s.split(','))
-    # split into rows
-    # str split by ','
-    # for char in chunk_data:
-    #     print(char, '|')
+    chunk_data_parsed_array = []
+    try:
+        chunk_data_newline_array = chunk_data.splitlines()
+        for s in chunk_data_newline_array:
+            chunk_data_parsed_array.append(s.split(','))
+
+    except:
+        chunk_data_parsed_array = None  # TODO?
+
+    return chunk_data_parsed_array
 
 
 def get_model_actions(wGuid, mGuid, user):
