@@ -15,9 +15,9 @@ def anaplan_create_token(user_email, user_pwd):
         token = requests.post("https://auth.anaplan.com/token/authenticate",
                               data={'user': f'{user_email}:{user_pwd}'},
                               auth=(user_email, user_pwd))
-    except:
+    except Exception as e:
         token = None  # TODO?
-        print('ERROR: Unable to create auth token.')
+        print(f"ERROR: Unable to create auth token ({e}).")  # TODO: Refactor the try/except clauses in all helper functions like this
 
     return token
 
