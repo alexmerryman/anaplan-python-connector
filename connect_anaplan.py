@@ -33,7 +33,7 @@ workspaces_response, workspaces_data_json = anaplan_connect_helper_functions.get
 print(workspaces_data_json)
 
 print('------------------- GETTING MODEL INFO -------------------')
-print(f'Model ID: {mGuid}')
+print('Model ID:', mGuid)
 model_info_response, model_info_json = anaplan_connect_helper_functions.get_model_info(mGuid, token_auth_user)
 print(model_info_json)
 
