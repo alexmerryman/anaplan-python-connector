@@ -4,6 +4,7 @@ import pandas as pd
 
 # Ref: HTTP Status Codes: https://www.restapitutorial.com/httpstatuscodes.html
 
+# TODO: Refactor credentials -- put in cred.csv/json file, add that file to .gitignore
 # Insert your workspace Guid
 wGuid = '8a81b08e4f6d2b43014fbe11122a160c'
 
