@@ -1,4 +1,5 @@
 import json
+import os
 import anaplan_connect_helper_functions
 import pandas as pd
 
@@ -10,6 +11,17 @@ wGuid = '8a81b08e4f6d2b43014fbe11122a160c'
 
 # Insert your model Guid
 mGuid = '96339A3A48394142A3E70E057F75480E'
+
+def load_creds():
+    cred_path = "creds.json"
+    if not os.path.isfile(cred_path):
+        return None
+
+    creds = json.load(cred_path.read())
+    print(creds)
+
+
+load_creds()
 
 AS_user_email = 'Anthony.Severini@teklink.com'
 AS_user_pwd = 'Steelerssoccera1219_1'
