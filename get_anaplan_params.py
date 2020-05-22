@@ -9,13 +9,13 @@ def main(user_email, user_pwd, wGuid, mGuid, export_id):
     anaplan_param_export_task_response, anaplan_param_export_task_json = anaplan_connect_helper_functions.post_export_task(
         wGuid, mGuid, export_id, token_auth_user)
     # print(anaplan_param_export_task_json)
-    print(f"Export Task Status: {anaplan_param_export_task_json['task']['taskState']}")
+    print("Export Task Status:", anaplan_param_export_task_json['task']['taskState'])
     if anaplan_param_export_task_json['task']['taskState'] == 'NOT_STARTED':
         print('------------------- GETTING EXPORT TASK DETAILS -------------------')
         anaplan_param_export_task_details_response, anaplan_param_export_task_details_json = anaplan_connect_helper_functions.get_export_task_details(
             wGuid, mGuid, export_id, anaplan_param_export_task_json['task']['taskId'], token_auth_user)
 
-    print(f"Export Task Status: {anaplan_param_export_task_details_json['task']['taskState']}")
+    print("Export Task Status:", anaplan_param_export_task_details_json['task']['taskState'])
     # TODO: Make sure anaplan_param_export_task_details_json['task']['taskState'] == 'COMPLETED' ?
 
     print('------------------- GETTING FILE INFO (CHUNK METADATA) -------------------')
@@ -35,7 +35,7 @@ def main(user_email, user_pwd, wGuid, mGuid, export_id):
             # print(chunk_data_text)
             chunk_data_parsed_array = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
         else:
-            print(f"ERROR: Chunk Data Response Status Code: {chunk_data_response.status_code}")
+            print("ERROR: Chunk Data Response Status Code:", chunk_data_response.status_code)
 
     return chunk_data_parsed_array
 
