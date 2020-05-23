@@ -18,7 +18,7 @@ def full_run(input1, input2, input3, etc, sim_data=False):
 
     else:
         # get data from Anaplan
-        df = connect_anaplan()
+        df = connect_anaplan()  # TODO
 
     model_args_dict = {
         'df': df,

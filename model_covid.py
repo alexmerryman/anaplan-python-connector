@@ -34,6 +34,8 @@ from curvefit.core.functions import ln_gaussian_cdf
 def main(model_args_dict, verbose=False, charts=False):
     # TODO: Create dict to hold param values, pass dict as single arg to this main() function
     # parse model args from dict
+    if verbose:
+        print("Getting model arguments/params from model_args_dict...")
     df = model_args_dict['df']
     col_t = model_args_dict['col_t']
     col_obs = model_args_dict['col_obs']
@@ -46,6 +48,8 @@ def main(model_args_dict, verbose=False, charts=False):
     fe_init = model_args_dict['fe_init']
     fe_gprior = model_args_dict['fe_gprior']
 
+    if verbose:
+        print("Instantiating the model...")
     # Set up the CurveModel
     model = CurveModel(
         df=df,
@@ -59,6 +63,8 @@ def main(model_args_dict, verbose=False, charts=False):
         fun=fun
     )
 
+    if verbose:
+        print("Fitting the model...")
     # Fit the model to estimate parameters  # TODO: Get these init params from Anaplan
     # Can't pass `smart_initialization=True` with only 1 group of data
     if len(df[col_group].unique.tolist()) == 1:
@@ -69,7 +75,8 @@ def main(model_args_dict, verbose=False, charts=False):
                          fe_gprior=fe_gprior,
                          smart_initialize=True)
 
-
+    if verbose:
+        print("Getting model predictions...")
     # Get predictions
     y_pred = model.predict(
         t=df[col_t],
@@ -80,6 +87,8 @@ def main(model_args_dict, verbose=False, charts=False):
     print(y_pred)
 
     if charts:
+        if verbose:
+            print("Plotting the fitted model...")
         # Plot results
         plt.plot(df[col_t], y_pred, '-')
         plt.plot(df[col_t], df[col_obs], '.')

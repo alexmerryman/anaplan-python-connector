@@ -5,6 +5,7 @@ import pandas as pd
 
 # Reference: HTTP Status Codes: https://www.restapitutorial.com/httpstatuscodes.html
 
+# TODO: Describe creds.json schema
 def load_creds():
     cred_path = "creds.json"
     if not os.path.isfile(cred_path):
@@ -13,6 +14,35 @@ def load_creds():
     creds = json.load(open(cred_path,))
     return creds
 
+
+# TODO: More robust credentialing, including refreshing the API token instead of re-generating it:
+
+# creds = None
+# # The file token.pickle stores the user's access and refresh tokens, and is
+# # created automatically when the authorization flow completes for the first
+# # time.
+# if os.path.exists('token.pickle'):
+#     with open('token.pickle', 'rb') as token:
+#         creds = pickle.load(token)
+# # If there are no (valid) credentials available, let the user log in.
+# if not creds or not creds.valid:
+#     if creds and creds.expired and creds.refresh_token:
+#         creds.refresh(Request())
+#     else:
+#         flow = InstalledAppFlow.from_client_secrets_file(
+#             'credentials.json', SCOPES)
+#         creds = flow.run_local_server(port=0)
+#     # Save the credentials for the next run
+#     with open('token.pickle', 'wb') as token:
+#         pickle.dump(creds, token)
+
+
+
+
+
+# TODO: def main()
+# if __name__ == '__main__':
+#     main()
 
 san_diego_demo_creds = load_creds()
 
@@ -37,7 +67,7 @@ anaplan_param_export_id = san_diego_demo_creds['san-diego-demo']['export_id']
 print('------------------- GENERATING AUTH TOKEN -------------------')
 # TODO: Use refresh token method instead of generating new token each time? Are there limits to token generation and/or API calls?
 
-# TODO: Fix token generation
+# TODO: Fix token generation ?
 manual_token = "eKZyS21T9Q18E+fUkB+J2g==.m8wRnYs0Sh8Cc/2O6+3yn0E9XpOvFK+C1ZlyBs+sVEKOcPJ8fsNB6oQFIu89E4nYDqwn78bgjKxov6O0vbMkde35/wk3+i0s6t91Ksr44inNc/Y1IANGO6F5ISEix+fJ5oAftTOHbtwzsCIaMaWXWWW+Sx/n3s53f84T7Z4+XdXEEOWIVsQEg5fMc3qDN5Jw3kfewKz24dNAkZK3KJCCN7PIdTs/ZpN9BYTQMLRPTSp7KjbDtM35l+79QmECp2azLWgEheju+pjGg9hjdtbjUO03lZswq8mH7ZCm/ZBdapThHnphyboPGYmUHVhjpL4pNgeaqon1V+k1/kzBLPgpNS8g/M+e2MlcxhhI1T9a3kDcMdDL5s3Al5TtWL0Vby6GTVF8qTfmeDpnq9BZwh7jYB0Twq3Ef3iKSNRmpV4zEjCTYQT7VfBBc++ib+/tuDvefeR4gJD1LjE81Zg+ivm2B0qwciwJm93y+5eMsEZOVApmeXX2rxVTXnGo+ahS2Uts.fAJyUL5OcWCi/7giyD8iCE+Ju0PjP+CQ8zZukoOsmnI="
 token_auth_user = anaplan_connect_helper_functions.generate_token_auth_user(AS_user_email, AS_user_pwd, token=manual_token)
 print(token_auth_user)
