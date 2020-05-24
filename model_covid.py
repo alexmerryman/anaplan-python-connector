@@ -1,26 +1,27 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
-# Using CurveFit package from: https://github.com/ihmeuw-msca/CurveFit
-# Install the CurveFit package in your virtual environment by running `pip install git+https://github.com/ihmeuw-msca/CurveFit.git` from the command line
-# NOTE: CurveFit requires Python 3.6+, as it uses f strings in its error handling
 from curvefit.core.model import CurveModel
 from curvefit.core.functions import ln_gaussian_cdf
+# TODO: Import * (for above)? To make other functions available to user (accept other values for `model_args_dict['fun']`)
 
-# Issues with numpy (specifically optimization functions in scipy, which is based on numpy) on Windows: https://stackoverflow.com/a/51091218 -- easier to just run on Linux/Unix
+# Using CurveFit package from: https://github.com/ihmeuw-msca/CurveFit
 
-# TODO:
-#  Run get_anaplan_params.py
-#  Parse chunk_data_parsed_array (set var name = its accompanying value)
-#  Plug vars into curvefit model (COVID deaths?)
-#  Get resulting projections (as CSV?)
-#  Import projections into Anaplan
+# Install the CurveFit package in your virtual environment by running:
+# `pip install git+https://github.com/ihmeuw-msca/CurveFit.git` from the command line.
+
+# NOTE: CurveFit requires Python 3.6+, as it uses f-strings in its error handling.
+
+# NOTE: The CurveFit package uses scipy's optimization functions, which in turn use numpy's linear algebra functions.
+# This presents significant issues on Windows, since the Windows OS lacks certain base dependencies for handling
+# linear algebra (more details can be found here: https://stackoverflow.com/a/51091218). One solution is to install the
+# Windows-binary versions of numpy and pandas (here: https://www.lfd.uci.edu/~gohlke/pythonlibs/, also use pipwin), but
+# it's probably easier to just use a Linux/Unix machine.
 
 
 # np.random.seed(1234)
 #
-# # Create example data -- both death rate and log death rate  # TODO: Get this from Anaplan? Just death rate -- log death rate can be calculated
+# # Create example data -- both death rate and log death rate
 # df = pd.DataFrame()
 # df['time'] = np.arange(100)
 # df['death_rate'] = np.exp(.1 * (df.time - 20)) / (1 + np.exp(.1 * (df.time - 20))) + \
@@ -31,9 +32,8 @@ from curvefit.core.functions import ln_gaussian_cdf
 # print(df)
 
 
-def main(model_args_dict, verbose=False, charts=False):
-    # TODO: Create dict to hold param values, pass dict as single arg to this main() function
-    # parse model args from dict
+def fit_model_predict(model_args_dict, verbose=False, charts=False):
+    # Parse model arguments from model_args_dict
     if verbose:
         print("Getting model arguments/params from model_args_dict...")
     df = model_args_dict['df']
@@ -44,13 +44,13 @@ def main(model_args_dict, verbose=False, charts=False):
     param_names = model_args_dict['param_names']
     link_fun = model_args_dict['link_fun']
     var_link_fun = model_args_dict['var_link_fun']
-    fun = model_args_dict['fun']
+    fun = ln_gaussian_cdf  # TODO -- set this as default? How to change from full_run.py?
     fe_init = model_args_dict['fe_init']
     fe_gprior = model_args_dict['fe_gprior']
 
+    # Set up the CurveModel
     if verbose:
         print("Instantiating the model...")
-    # Set up the CurveModel
     model = CurveModel(
         df=df,
         col_t=col_t,
@@ -63,11 +63,10 @@ def main(model_args_dict, verbose=False, charts=False):
         fun=fun
     )
 
+    # Fit the model to estimate parameters
     if verbose:
         print("Fitting the model...")
-    # Fit the model to estimate parameters  # TODO: Get these init params from Anaplan
-    # Can't pass `smart_initialization=True` with only 1 group of data
-    if len(df[col_group].unique.tolist()) == 1:
+    if len(df[col_group].unique().tolist()) == 1:  # Can't pass `smart_initialization=True` with only 1 group of data
         model.fit_params(fe_init=fe_init,
                          fe_gprior=fe_gprior)
     else:
@@ -75,9 +74,9 @@ def main(model_args_dict, verbose=False, charts=False):
                          fe_gprior=fe_gprior,
                          smart_initialize=True)
 
+    # Get predictions
     if verbose:
         print("Getting model predictions...")
-    # Get predictions
     y_pred = model.predict(
         t=df[col_t],
         group_name=df[col_group].unique()

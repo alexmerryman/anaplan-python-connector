@@ -29,7 +29,7 @@ def anaplan_token_auth_user(token):
 
 
 def generate_token_auth_user(user_email, user_pwd, token=None):
-    if token:
+    if token and isinstance(token, str):
         token_val = token
         token_auth_user = anaplan_token_auth_user(token_val)
     else:

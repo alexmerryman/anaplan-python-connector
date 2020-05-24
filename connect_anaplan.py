@@ -46,7 +46,6 @@ def load_creds():
 
 san_diego_demo_creds = load_creds()
 
-# manually-generated token: eKZyS21T9Q18E+fUkB+J2g==.m8wRnYs0Sh8Cc/2O6+3yn0E9XpOvFK+C1ZlyBs+sVEKOcPJ8fsNB6oQFIu89E4nYDqwn78bgjKxov6O0vbMkde35/wk3+i0s6t91Ksr44inNc/Y1IANGO6F5ISEix+fJ5oAftTOHbtwzsCIaMaWXWWW+Sx/n3s53f84T7Z4+XdXEEOWIVsQEg5fMc3qDN5Jw3kfewKz24dNAkZK3KJCCN7PIdTs/ZpN9BYTQMLRPTSp7KjbDtM35l+79QmECp2azLWgEheju+pjGg9hjdtbjUO03lZswq8mH7ZCm/ZBdapThHnphyboPGYmUHVhjpL4pNgeaqon1V+k1/kzBLPgpNS8g/M+e2MlcxhhI1T9a3kDcMdDL5s3Al5TtWL0Vby6GTVF8qTfmeDpnq9BZwh7jYB0Twq3Ef3iKSNRmpV4zEjCTYQT7VfBBc++ib+/tuDvefeR4gJD1LjE81Zg+ivm2B0qwciwJm93y+5eMsEZOVApmeXX2rxVTXnGo+ahS2Uts.fAJyUL5OcWCi/7giyD8iCE+Ju0PjP+CQ8zZukoOsmnI=
 AS_user_email = san_diego_demo_creds['username']
 AS_user_pwd = san_diego_demo_creds['password']
 
@@ -68,6 +67,7 @@ print('------------------- GENERATING AUTH TOKEN -------------------')
 # TODO: Use refresh token method instead of generating new token each time? Are there limits to token generation and/or API calls?
 
 # TODO: Fix token generation ?
+token_generated = anaplan_connect_helper_functions.anaplan_create_token(AS_user_email, AS_user_pwd)
 manual_token = "eKZyS21T9Q18E+fUkB+J2g==.m8wRnYs0Sh8Cc/2O6+3yn0E9XpOvFK+C1ZlyBs+sVEKOcPJ8fsNB6oQFIu89E4nYDqwn78bgjKxov6O0vbMkde35/wk3+i0s6t91Ksr44inNc/Y1IANGO6F5ISEix+fJ5oAftTOHbtwzsCIaMaWXWWW+Sx/n3s53f84T7Z4+XdXEEOWIVsQEg5fMc3qDN5Jw3kfewKz24dNAkZK3KJCCN7PIdTs/ZpN9BYTQMLRPTSp7KjbDtM35l+79QmECp2azLWgEheju+pjGg9hjdtbjUO03lZswq8mH7ZCm/ZBdapThHnphyboPGYmUHVhjpL4pNgeaqon1V+k1/kzBLPgpNS8g/M+e2MlcxhhI1T9a3kDcMdDL5s3Al5TtWL0Vby6GTVF8qTfmeDpnq9BZwh7jYB0Twq3Ef3iKSNRmpV4zEjCTYQT7VfBBc++ib+/tuDvefeR4gJD1LjE81Zg+ivm2B0qwciwJm93y+5eMsEZOVApmeXX2rxVTXnGo+ahS2Uts.fAJyUL5OcWCi/7giyD8iCE+Ju0PjP+CQ8zZukoOsmnI="
 token_auth_user = anaplan_connect_helper_functions.generate_token_auth_user(AS_user_email, AS_user_pwd, token=manual_token)
 print(token_auth_user)
