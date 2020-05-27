@@ -82,15 +82,16 @@ def fit_model_predict(model_args_dict, verbose=False, charts=False):
         group_name=df[col_group].unique()
     )
 
-    # TODO: Join y_pred with time?
-    print(y_pred)
+    y_pred_df = pd.DataFrame(data=y_pred, columns=['prediction'])
+    y_pred_df = pd.concat([df[col_t], y_pred_df], axis=1, sort=False)
+    print(y_pred_df)
 
     if charts:
         if verbose:
             print("Plotting the fitted model...")
         # Plot results
-        plt.plot(df[col_t], y_pred, '-')
-        plt.plot(df[col_t], df[col_obs], '.')
+        plt.plot(y_pred_df[col_t], y_pred_df, '-')
+        plt.plot(y_pred_df[col_t], df[col_obs], '.')
         plt.show()
 
-    return model, y_pred
+    return model, y_pred_df

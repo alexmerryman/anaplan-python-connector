@@ -4,6 +4,8 @@
   "san-diego-demo": {
     "workspace_id": "8a81b08e4f6d2b43014fbe11122a160c",
     "model_id": "96339A3A48394142A3E70E057F75480E",
-    "export_id": "116000000005"
+    "export_id": "116000000005",
+    "import_id": "112000000024",
+    "file_id": "113000000022"
   }
 }

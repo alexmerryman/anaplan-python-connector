@@ -142,6 +142,29 @@ def get_model_imports(wGuid, mGuid, user):
         return None, None  # TODO
 
 
+def post_model_imports(wGuid, mGuid, file_id, user):
+    getHeaders = {
+        'Authorization': user,
+        'Content-Type': 'application/octet-stream'
+    }
+
+    try:
+        model_imports_response = requests.put('https://api.anaplan.com/2/0/workspaces/{WGUID}/models/{MGUID}/files/{FILEID}/chunks/0'.format(WGUID=wGuid, MGUID=mGuid, FILEID=file_id),
+                                              headers=getHeaders)
+        print(model_imports_response.url)
+        model_imports_data = json.loads(model_imports_response.text)
+    except Exception as e:
+        model_imports_response = None
+        model_imports_data = None  # TODO
+        print('ERROR: Unable to put model imports via API ({})'.format(e))
+
+    if model_imports_response.status_code == 204:
+        return model_imports_response, model_imports_data
+    else:
+        print('Error: Status Code {}'.format(model_imports_response.status_code))
+        return None, None  # TODO
+
+
 def get_model_exports(wGuid, mGuid, user):
     getHeaders = {
         'Authorization': user
