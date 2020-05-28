@@ -150,7 +150,7 @@ def get_model_imports(wGuid, mGuid, user):
         return None, None  # TODO
 
 
-def put_upload_file(wGuid, mGuid, file_upload_metadata, data_file, user):
+def put_upload_file(wGuid, mGuid, file_id, data_file, user):
     """
     Sets up the upload action in Anaplan -- does not actually execute it.
 
@@ -166,13 +166,11 @@ def put_upload_file(wGuid, mGuid, file_upload_metadata, data_file, user):
         'Content-Type': 'application/octet-stream'
     }
 
-    file_id = file_upload_metadata['id']
-
     try:
         # TODO: If file is broken into multiple chunks i (larger than 10MB), repeat put request for ".../chunks/{i}"
         put_import_file_response = requests.put('https://api.anaplan.com/2/0/workspaces/{WGUID}/models/{MGUID}/files/{FILEID}/chunks/0'.format(WGUID=wGuid, MGUID=mGuid, FILEID=file_id),
                                                 headers=headers,
-                                                data=(data_file))
+                                                data=data_file)
         if put_import_file_response.ok:
             print('SUCCESS! File Upload Successful (via put_upload_file()).')
         else:

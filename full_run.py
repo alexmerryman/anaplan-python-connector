@@ -19,9 +19,8 @@ def load_creds():
         "model_id": "xxxxxxxxxxxxxxxxxxx",
         "df_export_id": "xxxxxxxxxxxxxxxxxxx",
         "params_export_id": "xxxxxxxxxxxxxxxxxxx",
-        "import_predictions_file_id": "xxxxxxxxxxxxxxxxxxx",
-        "upload_file_import_id": "xxxxxxxxxxxxxxxxxxx",
-        "import_preds_process_id": "xxxxxxxxxxxxxxxxxxx"
+        "predictions_file_id": "xxxxxxxxxxxxxxxxxxx",
+        "predictions_import_id": "xxxxxxxxxxxxxxxxxxx",
         }
     }
 
@@ -248,16 +247,19 @@ def validate_df(df_historical):
 def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     """
     # TODO: Update these steps & docstring
+    - Load credentials via load_creds()
+    - Generate an auth token.
+
     - Run get_anaplan_params.py
     - Parse chunk_data_parsed_array (set var name = its accompanying value)
     - Plug vars into curvefit model (COVID deaths?)
     - Get resulting projections (as CSV?)
     - Import projections back into Anaplan.
 
-    :param num_time_predict:
-    :param sim_data:
-    :param verbose:
-    :param dry_run:
+    :param num_time_predict: (int) Time to predict out (ex: number of days).
+    :param sim_data: (bool) Whether to use simulated data or real data from Anaplan.
+    :param verbose: (bool) Whether to print each step to the console as it's being executed.
+    :param dry_run: (bool) Whether to execute a dry_run or not -- dry_run will run with verbose=True and sim_data=True
     :return:
     """
     if verbose:
@@ -269,9 +271,8 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     wGuid = san_diego_demo_creds['san-diego-demo']['workspace_id']
     mGuid = san_diego_demo_creds['san-diego-demo']['model_id']
     param_export_id = san_diego_demo_creds['san-diego-demo']['params_export_id']
-    import_predictions_file_id = san_diego_demo_creds['san-diego-demo']['import_predictions_file_id']
-    upload_file_import_id = san_diego_demo_creds['san-diego-demo']['upload_file_import_id']
-    import_process_id = san_diego_demo_creds['san-diego-demo']['import_preds_process_id']
+    predictions_file_id = san_diego_demo_creds['san-diego-demo']['predictions_file_id']
+    predictions_import_id = san_diego_demo_creds['san-diego-demo']['predictions_import_id']
 
     # TODO: Store token somewhere, and if it expires, refresh it?
     token_generated = anaplan_connect_helper_functions.anaplan_create_token(san_diego_demo_email, san_diego_demo_pwd)
@@ -279,6 +280,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
 
     if dry_run:
         sim_data = True
+        verbose = True
 
     if sim_data:
         if verbose:
@@ -380,12 +382,14 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # print(df_predictions.head())
     # print(df_predictions.tail())
 
-    # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
-    df_predictions.at[0, 'death_rate'] = -999
-    print(df_predictions.head())
+    if dry_run:
+        # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
+        df_predictions.at[0, 'death_rate'] = -999999
+        print(df_predictions.head())
 
-    pred_file_timestamp = datetime.datetime.now().strftime('%Y-%m-%d')
-    pred_filename = "covid_predictions_{TIME}.csv".format(TIME=pred_file_timestamp)
+    # pred_file_timestamp = datetime.datetime.now().strftime('%Y-%m-%d')
+    # pred_filename = "covid_predictions_{TIME}.csv".format(TIME=pred_file_timestamp)
+    pred_filename = "Covid_Predictions.csv"  # This must the be exact name of the file currently in Anaplan which you are replacing/updating
     # Save predictions df locally as CSV
     if verbose:
         print('Saving predictions df as a CSV locally...')
@@ -407,43 +411,21 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # - A private import file can only be accessed by the user who originally ran the export.
     # - Private files are stored in models and removed if not accessed at least once in 48 hours. If your private file no longer exists for a file Import Data Source or file Export Action, the default file is used instead.
 
-
-    file_upload_metadata = {
-        "id": import_predictions_file_id,
-        "name": pred_filename,
-        "chunkCount": 1,
-        "delimiter": "",
-        "encoding": "utf-8",
-        "firstDataRow": 2,
-        "format": "csv",
-        "headerRow": 1,
-        "separator": ","
-    }
-
+    # TODO: Currently assuming the data to upload/import fits within 1 chunk (<10 MB)
     data_file = open(pred_filename, 'r').read().encode('utf-8')
 
-    # # --- Initiate the upload ---
-    # if verbose:
-    #     print('Uploading predictions df to Anaplan...')
-    # pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, file_upload_metadata, data_file, token_auth_user)
-    # print(pred_file_upload_response)
-    #
-    # # --- Execute the import ---
-    # if verbose:
-    #     print('Importing uploaded predictions df to Anaplan model...')
-    # post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, upload_file_import_id, token_auth_user)
-    # print(post_import_file_response)
-    # print(post_import_file_data)
+    # --- Initiate the upload ---
+    if verbose:
+        print('Importing uploaded predictions df to Anaplan model...')
+    pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, predictions_file_id, data_file, token_auth_user)
+    print(pred_file_upload_response)
 
-
-
-
-    # if verbose:
-    #     print('Starting import process (to uploaded predictions df to Anaplan model)...')
-    # post_import_process_response, post_import_process_data = anaplan_connect_helper_functions.post_import_process(wGuid, mGuid, import_process_id, token_auth_user)
-    # print(post_import_process_response)
-    # print(post_import_process_data)
-
+    # --- Execute the import ---
+    if verbose:
+        print('Uploading predictions df to Anaplan...')
+    post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, predictions_import_id, token_auth_user)
+    print(post_import_file_response)
+    print(post_import_file_data)
 
     # Once import is complete, delete the .\temp directory
 
@@ -452,25 +434,8 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
 
 
 if __name__ == "__main__":
+    # TODO: Use argparse to enable args from CLI?
     main(sim_data=False, verbose=True, dry_run=False)
-
-
-
-# tokenval = "ENUOA0k7kpYVgQ9WYjrOQA==.kT6bkAURD/ALZV7id1XGDhY19vq9Z1iF4namAlUW0VfWqdZaSwn1sPW1drOYQMdepQGZhHywc2ffo/gjGUkclFQ28sgKQhwNz30GcWAqY8f3HvWyUmqN+zbvIt5tJLwayJtYNBOurRTcpqITo2kVeyrr8PZwTsqQ14CMv5a+ip58pfaREQsMGMicTbsaKfbBuY6NP5qUQK/5p3WsRjmqiyQPfofJFSDF6RoksVqVgi+B4xJ95uhbTZZiXfAYqgYebqY98zvg1zARVLV1BqIcRR2LBabJ4lz8lN0bL7xboWIf9JhU7OdAK4wCe4ykaV9TBXqYvhYVQx2JwnzMGyuMwwPQED6iwZjwjvnC55UaptGZ5b5hbUVRt68kqpkVuDAA24jKjjmx7/d2opKm4FoEHq/8H9pggx+FPm1iAu/3iizp680nurCjJWpj1U8/UYpfUu0wi6oGXDxLBK91bDWE+vAt65/GmeRU1D9stbJCRcncS5NfbK1aSa5KkA+XCKeg.RJ+NzsZAwxuuPWQCNHkYEVG58Q1uEyZx5EPl1aP/LPA="
-# token_auth_user = anaplan_connect_helper_functions.anaplan_token_auth_user(tokenval)
-# wGuid = "8a81b08e4f6d2b43014fbe11122a160c"
-# mGuid = "96339A3A48394142A3E70E057F75480E"
-#
-# model_imports_response, model_imports_data = anaplan_connect_helper_functions.get_model_imports(wGuid, mGuid, token_auth_user)
-# print(model_imports_response)
-# print(model_imports_data)
-# covid_preds_import_id = "112000000024"
-#
-# model_files_response, model_files_json = anaplan_connect_helper_functions.get_model_files(wGuid, mGuid, token_auth_user)
-# print(model_files_json)
-# covid_preds_file_id = "113000000022"
-
-# put_import_file
 
 
 
