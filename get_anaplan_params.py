@@ -9,7 +9,7 @@ def main(user_email, user_pwd, wGuid, mGuid, export_id):
     anaplan_param_export_task_response, anaplan_param_export_task_json = anaplan_connect_helper_functions.post_export_task(
         wGuid, mGuid, export_id, token_auth_user)
     # print(anaplan_param_export_task_json)
-    print("Export Task Status: ", anaplan_param_export_task_json['task']['taskState'])
+    print("Export Task Status:", anaplan_param_export_task_json['task']['taskState'])
     if anaplan_param_export_task_json['task']['taskState'] == 'NOT_STARTED':
         print('------------------- GETTING EXPORT TASK DETAILS -------------------')
         anaplan_param_export_task_details_response, anaplan_param_export_task_details_json = anaplan_connect_helper_functions.get_export_task_details(

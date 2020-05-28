@@ -1,19 +1,59 @@
 import json
+import os
 import anaplan_connect_helper_functions
 import pandas as pd
 
-# Ref: HTTP Status Codes: https://www.restapitutorial.com/httpstatuscodes.html
+# Reference: HTTP Status Codes: https://www.restapitutorial.com/httpstatuscodes.html
 
-# TODO: Refactor credentials -- put in cred.csv/json file, add that file to .gitignore
-# Insert your workspace Guid
-wGuid = '8a81b08e4f6d2b43014fbe11122a160c'
+# TODO: Describe creds.json schema
+def load_creds():
+    cred_path = "creds.json"
+    if not os.path.isfile(cred_path):
+        return None
 
-# Insert your model Guid
-mGuid = '96339A3A48394142A3E70E057F75480E'
+    creds = json.load(open(cred_path,))
+    return creds
 
-AS_user_email = 'Anthony.Severini@teklink.com'
-AS_user_pwd = 'Steelerssoccera1219_1'
-basic_auth_user = anaplan_connect_helper_functions.anaplan_basic_auth_user(AS_user_email, AS_user_pwd)
+
+# TODO: More robust credentialing, including refreshing the API token instead of re-generating it:
+
+# creds = None
+# # The file token.pickle stores the user's access and refresh tokens, and is
+# # created automatically when the authorization flow completes for the first
+# # time.
+# if os.path.exists('token.pickle'):
+#     with open('token.pickle', 'rb') as token:
+#         creds = pickle.load(token)
+# # If there are no (valid) credentials available, let the user log in.
+# if not creds or not creds.valid:
+#     if creds and creds.expired and creds.refresh_token:
+#         creds.refresh(Request())
+#     else:
+#         flow = InstalledAppFlow.from_client_secrets_file(
+#             'credentials.json', SCOPES)
+#         creds = flow.run_local_server(port=0)
+#     # Save the credentials for the next run
+#     with open('token.pickle', 'wb') as token:
+#         pickle.dump(creds, token)
+
+
+
+
+
+# TODO: def main()
+# if __name__ == '__main__':
+#     main()
+
+san_diego_demo_creds = load_creds()
+
+AS_user_email = san_diego_demo_creds['username']
+AS_user_pwd = san_diego_demo_creds['password']
+
+wGuid = san_diego_demo_creds['san-diego-demo']['workspace_id']
+mGuid = san_diego_demo_creds['san-diego-demo']['model_id']
+anaplan_param_export_id = san_diego_demo_creds['san-diego-demo']['export_id']
+
+# basic_auth_user = anaplan_connect_helper_functions.anaplan_basic_auth_user(AS_user_email, AS_user_pwd)
 
 # TODO: Modularize this -- i.e. main() function should simply connect to Anaplan,
 #  then function to get params from get_export,
@@ -25,7 +65,11 @@ basic_auth_user = anaplan_connect_helper_functions.anaplan_basic_auth_user(AS_us
 
 print('------------------- GENERATING AUTH TOKEN -------------------')
 # TODO: Use refresh token method instead of generating new token each time? Are there limits to token generation and/or API calls?
-token_auth_user = anaplan_connect_helper_functions.generate_token_auth_user(AS_user_email, AS_user_pwd)
+
+# TODO: Fix token generation ?
+token_generated = anaplan_connect_helper_functions.anaplan_create_token(AS_user_email, AS_user_pwd)
+manual_token = "eKZyS21T9Q18E+fUkB+J2g==.m8wRnYs0Sh8Cc/2O6+3yn0E9XpOvFK+C1ZlyBs+sVEKOcPJ8fsNB6oQFIu89E4nYDqwn78bgjKxov6O0vbMkde35/wk3+i0s6t91Ksr44inNc/Y1IANGO6F5ISEix+fJ5oAftTOHbtwzsCIaMaWXWWW+Sx/n3s53f84T7Z4+XdXEEOWIVsQEg5fMc3qDN5Jw3kfewKz24dNAkZK3KJCCN7PIdTs/ZpN9BYTQMLRPTSp7KjbDtM35l+79QmECp2azLWgEheju+pjGg9hjdtbjUO03lZswq8mH7ZCm/ZBdapThHnphyboPGYmUHVhjpL4pNgeaqon1V+k1/kzBLPgpNS8g/M+e2MlcxhhI1T9a3kDcMdDL5s3Al5TtWL0Vby6GTVF8qTfmeDpnq9BZwh7jYB0Twq3Ef3iKSNRmpV4zEjCTYQT7VfBBc++ib+/tuDvefeR4gJD1LjE81Zg+ivm2B0qwciwJm93y+5eMsEZOVApmeXX2rxVTXnGo+ahS2Uts.fAJyUL5OcWCi/7giyD8iCE+Ju0PjP+CQ8zZukoOsmnI="
+token_auth_user = anaplan_connect_helper_functions.generate_token_auth_user(AS_user_email, AS_user_pwd, token=manual_token)
 print(token_auth_user)
 
 print('------------------- GETTING ALL WORKSPACES -------------------')
@@ -42,9 +86,7 @@ model_exports_response, model_exports_json = anaplan_connect_helper_functions.ge
 print(model_exports_json)
 
 print('------------------- GETTING EXPORT DATA -------------------')
-# TODO: blocked by inadequate schema in Anaplan (for test table)
 # ref: https://community.anaplan.com/t5/Best-Practices/RESTful-API-Best-Practices/ta-p/33579 (https://vimeo.com/318242332)
-anaplan_param_export_id = '116000000005'
 anaplan_param_export_response, anaplan_param_export_data_json = anaplan_connect_helper_functions.get_export_data(wGuid, mGuid, anaplan_param_export_id, token_auth_user)
 print(anaplan_param_export_data_json['exportMetadata']['headerNames'])
 print(anaplan_param_export_data_json['exportMetadata']['dataTypes'])
@@ -67,8 +109,8 @@ print(anaplan_param_export_task_details_json['task']['taskState'])
 print('------------------- GETTING ALL MODEL FILES -------------------')
 model_files__response, model_files_json = anaplan_connect_helper_functions.get_model_files(wGuid, mGuid, token_auth_user)
 print(model_files_json)
-# Then, get all chunks
 
+# Then, get all chunks
 print('------------------- GETTING FILE INFO (CHUNK METADATA) -------------------')
 chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid, anaplan_param_export_id, token_auth_user)
 print(chunk_metadata_json)
@@ -80,7 +122,8 @@ for c in chunk_metadata_json['chunks']:
     # print(chunk_data.url)
     # print(chunk_data.status_code)
     # print(chunk_data_text)
-    anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
+    chunk_data_parsed_array = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
+    print(chunk_data_parsed_array)
 
 
 # print('------------------- ALL MODEL IMPORTS -------------------')

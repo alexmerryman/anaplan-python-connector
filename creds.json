@@ -1,0 +1,13 @@
+{
+  "username": "Anthony.Severini@teklink.com",
+  "password": "Steelerssoccera1219_1",
+  "san-diego-demo": {
+    "workspace_id": "8a81b08e4f6d2b43014fbe11122a160c",
+    "model_id": "96339A3A48394142A3E70E057F75480E",
+    "df_export_id": "116000000008",
+    "params_export_id": "116000000007",
+    "import_predictions_file_id": "113000000022",
+    "upload_file_import_id": "112000000027",
+    "import_preds_process_id": "118000000002"
+  }
+}
