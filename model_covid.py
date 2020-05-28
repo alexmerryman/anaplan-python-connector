@@ -16,27 +16,14 @@ from curvefit.core.functions import ln_gaussian_cdf
 # This presents significant issues on Windows, since the Windows OS lacks certain base dependencies for handling
 # linear algebra (more details can be found here: https://stackoverflow.com/a/51091218). One solution is to install the
 # Windows-binary versions of numpy and pandas (here: https://www.lfd.uci.edu/~gohlke/pythonlibs/, also use pipwin), but
-# it's probably easier to just use a Linux/Unix machine.
-
-
-# np.random.seed(1234)
-#
-# # Create example data -- both death rate and log death rate
-# df = pd.DataFrame()
-# df['time'] = np.arange(100)
-# df['death_rate'] = np.exp(.1 * (df.time - 20)) / (1 + np.exp(.1 * (df.time - 20))) + \
-#                    np.random.normal(0, 0.1, size=100).cumsum()
-# df['ln_death_rate'] = np.log(df['death_rate'])
-# df['group'] = 'all'
-# df['intercept'] = 1.0  # Default to 1.0 ?
-# print(df)
+# it's easier to just use a Linux/Unix machine (Mac).
 
 
 def fit_model_predict(model_args_dict, verbose=False, charts=False):
     # Parse model arguments from model_args_dict
     if verbose:
         print("Getting model arguments/params from model_args_dict...")
-    df = model_args_dict['df']
+    obs_df = model_args_dict['df']
     col_t = model_args_dict['col_t']
     col_obs = model_args_dict['col_obs']
     col_group = model_args_dict['col_group']
@@ -47,12 +34,14 @@ def fit_model_predict(model_args_dict, verbose=False, charts=False):
     fun = ln_gaussian_cdf  # TODO -- set this as default? How to change from full_run.py?
     fe_init = model_args_dict['fe_init']
     fe_gprior = model_args_dict['fe_gprior']
+    fe_bounds = model_args_dict['fe_bounds']
+    num_time_predict = model_args_dict['num_time_predict']
 
     # Set up the CurveModel
     if verbose:
         print("Instantiating the model...")
     model = CurveModel(
-        df=df,
+        df=obs_df,
         col_t=col_t,
         col_obs=col_obs,
         col_group=col_group,
@@ -66,7 +55,7 @@ def fit_model_predict(model_args_dict, verbose=False, charts=False):
     # Fit the model to estimate parameters
     if verbose:
         print("Fitting the model...")
-    if len(df[col_group].unique().tolist()) == 1:  # Can't pass `smart_initialization=True` with only 1 group of data
+    if len(obs_df[col_group].unique().tolist()) == 1:  # Can't pass `smart_initialization=True` with only 1 group of data
         model.fit_params(fe_init=fe_init,
                          fe_gprior=fe_gprior)
     else:
@@ -77,21 +66,24 @@ def fit_model_predict(model_args_dict, verbose=False, charts=False):
     # Get predictions
     if verbose:
         print("Getting model predictions...")
-    y_pred = model.predict(
-        t=df[col_t],
-        group_name=df[col_group].unique()
+    pred_df = pd.DataFrame()
+    pred_df['time_pred'] = np.arange(obs_df[col_t].max()+1, obs_df[col_t].max()+num_time_predict+1)
+    y_predictions = model.predict(
+        t=pred_df['time_pred'],  # TODO: Change this to predict for t values in the future
+        group_name=obs_df[col_group].unique()
     )
 
-    y_pred_df = pd.DataFrame(data=y_pred, columns=['prediction'])
-    y_pred_df = pd.concat([df[col_t], y_pred_df], axis=1, sort=False)
-    print(y_pred_df)
+    y_pred_df = pd.DataFrame(data=y_predictions, columns=['prediction_ln_death_rate'])
+    pred_df_full = pd.concat([pred_df, y_pred_df], axis=1, sort=False)
+    # print(pred_df_full)
 
-    if charts:
-        if verbose:
-            print("Plotting the fitted model...")
-        # Plot results
-        plt.plot(y_pred_df[col_t], y_pred_df, '-')
-        plt.plot(y_pred_df[col_t], df[col_obs], '.')
-        plt.show()
+    # TODO:
+    # if charts:
+    #     if verbose:
+    #         print("Plotting the fitted model...")
+    #     # Plot results
+    #     plt.plot(y_pred_df[col_t], y_pred_df, '-')
+    #     plt.plot(y_pred_df[col_t], obs_df[col_obs], '.')
+    #     plt.show()
 
-    return model, y_pred_df
+    return model, pred_df_full

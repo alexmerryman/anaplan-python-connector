@@ -40,9 +40,9 @@ def generate_token_auth_user(user_email, user_pwd, token=None):
             try:
                 token_json = token.json()
                 token_val = str(token_json['tokenInfo']['tokenValue'])
-            except:
+            except Exception as e:
                 token_val = None
-                print("ERROR: Unable to jsonify token, and/or unable to retrieve ['tokenInfo']['tokenValue'] from token")
+                print("ERROR: Unable to jsonify token, and/or unable to retrieve ['tokenInfo']['tokenValue'] from token ({}).".format(e))
             token_auth_user = anaplan_token_auth_user(token_val)
         else:
             token_auth_user = None  # TODO
@@ -122,6 +122,14 @@ def get_model_info(mGuid, user):
 
 
 def get_model_imports(wGuid, mGuid, user):
+    """
+    Gets the metadata associated for all import actions in the specified model.
+
+    :param wGuid:
+    :param mGuid:
+    :param user:
+    :return:
+    """
     getHeaders = {
         'Authorization': user
     }
@@ -142,26 +150,107 @@ def get_model_imports(wGuid, mGuid, user):
         return None, None  # TODO
 
 
-def post_model_imports(wGuid, mGuid, file_id, user):
-    getHeaders = {
+def put_upload_file(wGuid, mGuid, file_upload_metadata, data_file, user):
+    """
+    Sets up the upload action in Anaplan -- does not actually execute it.
+
+    :param wGuid:
+    :param mGuid:
+    :param file_upload_metadata:
+    :param data_file:
+    :param user:
+    :return:
+    """
+    headers = {
         'Authorization': user,
         'Content-Type': 'application/octet-stream'
     }
 
-    try:
-        model_imports_response = requests.put('https://api.anaplan.com/2/0/workspaces/{WGUID}/models/{MGUID}/files/{FILEID}/chunks/0'.format(WGUID=wGuid, MGUID=mGuid, FILEID=file_id),
-                                              headers=getHeaders)
-        print(model_imports_response.url)
-        model_imports_data = json.loads(model_imports_response.text)
-    except Exception as e:
-        model_imports_response = None
-        model_imports_data = None  # TODO
-        print('ERROR: Unable to put model imports via API ({})'.format(e))
+    file_id = file_upload_metadata['id']
 
-    if model_imports_response.status_code == 204:
-        return model_imports_response, model_imports_data
+    try:
+        # TODO: If file is broken into multiple chunks i (larger than 10MB), repeat put request for ".../chunks/{i}"
+        put_import_file_response = requests.put('https://api.anaplan.com/2/0/workspaces/{WGUID}/models/{MGUID}/files/{FILEID}/chunks/0'.format(WGUID=wGuid, MGUID=mGuid, FILEID=file_id),
+                                                headers=headers,
+                                                data=(data_file))
+        if put_import_file_response.ok:
+            print('SUCCESS! File Upload Successful (via put_upload_file()).')
+        else:
+            print('Something wrong with file upload.')
+        # put_import_file_data = json.loads(put_import_file_response.text)
+    except Exception as e:
+        put_import_file_response = None
+        put_import_file_data = None  # TODO
+        print('ERROR: Unable to put file import via API ({})'.format(e))
+
+    if put_import_file_response.status_code == 204:
+        return put_import_file_response #, put_import_file_data
     else:
-        print('Error: Status Code {}'.format(model_imports_response.status_code))
+        print('Error: Status Code {}'.format(put_import_file_response.status_code))
+        return None #, None  # TODO
+
+
+def post_upload_file(wGuid, mGuid, import_id, user):
+    """
+    Triggers/executes the import action in Anaplan.
+
+    :param wGuid:
+    :param mGuid:
+    :param import_id:
+    :param user:
+    :return:
+    """
+    headers = {
+        'Authorization': user,
+        'Content-Type': 'application/json'
+    }
+
+    try:
+        post_import_file_response = requests.post(
+            'https://api.anaplan.com/2/0/workspaces/{WGUID}/models/{MGUID}/imports/{IMPORTID}/tasks/'.format(WGUID=wGuid,
+                                                                                                             MGUID=mGuid,
+                                                                                                             IMPORTID=import_id),
+                                                  headers=headers,
+                                                  data=json.dumps({'localeName': 'en_US'}))
+        # print(post_import_file_response.url)
+        post_import_file_data = json.loads(post_import_file_response.text)
+    except Exception as e:
+        post_import_file_response = None
+        post_import_file_data = None  # TODO
+        print('ERROR: Unable to post/execute file import via API ({})'.format(e))
+
+    if post_import_file_response.status_code == 200:
+        return post_import_file_response, post_import_file_data
+    else:
+        print('Error: Status Code {}'.format(post_import_file_response.status_code))
+        return None, None  # TODO
+
+
+def post_import_process(wGuid, mGuid, process_id, user):
+    headers = {
+        'Authorization': user,
+        'Content-Type': 'application/json'
+    }
+
+    try:
+        post_import_process_response = requests.post(
+            'https://api.anaplan.com/2/0/workspaces/{WGUID}/models/{MGUID}/processes/{PROCESSID}/tasks/'.format(WGUID=wGuid,
+                                                                                                                MGUID=mGuid,
+                                                                                                                PROCESSID=process_id),
+            headers=headers,
+            data=json.dumps({'localeName': 'en_US'}))
+
+        print(post_import_process_response.url)
+        post_import_process_data = json.loads(post_import_process_response.text)
+    except Exception as e:
+        post_import_process_response = None
+        post_import_process_data = None  # TODO
+        print('ERROR: Unable to post/execute file import via API ({})'.format(e))
+
+    if post_import_process_response.status_code == 200:
+        return post_import_process_response, post_import_process_data
+    else:
+        print('Error: Status Code {}'.format(post_import_process_response.status_code))
         return None, None  # TODO
 
 
@@ -320,10 +409,10 @@ def get_chunk_data(wGuid, mGuid, fileID, chunkID, user):
         chunk_data_response = requests.get('https://api.anaplan.com/2/0/workspaces/{WGUID}/models/{MGUID}/files/{FILEID}/chunks/{CHUNKID}'.format(WGUID=wGuid, MGUID=mGuid, FILEID=fileID, CHUNKID=chunkID),
                                            headers=getHeaders)
         chunk_data_text = chunk_data_response.text
-    except:
+    except Exception as e:
         chunk_data_response = None  # TODO
         chunk_data_text = None  # TODO
-        print('ERROR: Unable to get chunk data via API.')
+        print('ERROR: Unable to get chunk data via API ({})'.format(e))
 
     if chunk_data_response.status_code == 200:
         return chunk_data_response, chunk_data_text
@@ -339,7 +428,8 @@ def parse_chunk_data(chunk_data):
         for s in chunk_data_newline_array:
             chunk_data_parsed_array.append(s.split(','))
 
-    except:
+    except Exception as e:
+        print('Error: Unable to parse params from Anaplan ({})'.format(e))
         chunk_data_parsed_array = None  # TODO?
 
     return chunk_data_parsed_array
