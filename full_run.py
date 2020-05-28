@@ -379,7 +379,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # print(df_predictions.head())
     # print(df_predictions.tail())
 
-    # Test to verify the file was correctly uploaded to Anaplan
+    # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
     df_predictions.at[0, 'death_rate'] = -999
     print(df_predictions.head())
 
@@ -391,10 +391,10 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     pd.DataFrame.to_csv(df_predictions, pred_filename, index=False)
 
     # --- Import predictions csv into Anaplan ---
-    # Note: To upload a file using the API, that file must already exist in Anaplan.
-    # If the file has not been previously uploaded, you must upload it initially using the Anaplan user interface.
+    # Note: To upload a file using the API, that file must already exist in Anaplan. If the file has not been
+    # previously uploaded, you must upload it initially using the Anaplan user interface.
     # You can then carry out subsequent uploads of that file using the API.
-    # Ref: https://anaplan.docs.apiary.io/#reference/upload-files
+    # Reference: https://anaplan.docs.apiary.io/#reference/upload-files
 
     # Notes on files uploaded/exported via API:
     # Private files are created when you use the Anaplan API to:
