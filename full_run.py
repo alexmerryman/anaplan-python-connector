@@ -270,7 +270,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
 
     wGuid = san_diego_demo_creds['san-diego-demo']['workspace_id']
     mGuid = san_diego_demo_creds['san-diego-demo']['model_id']
-    param_export_id = san_diego_demo_creds['san-diego-demo']['params_export_id']
+    # param_export_id = san_diego_demo_creds['san-diego-demo']['params_export_id']
     predictions_file_id = san_diego_demo_creds['san-diego-demo']['predictions_file_id']
     predictions_import_id = san_diego_demo_creds['san-diego-demo']['predictions_import_id']
 
@@ -382,10 +382,9 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # print(df_predictions.head())
     # print(df_predictions.tail())
 
-    if dry_run:
-        # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
-        df_predictions.at[0, 'death_rate'] = -999999
-        print(df_predictions.head())
+    # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
+    df_predictions.at[0, 'death_rate'] = -1999
+    print(df_predictions.head())
 
     # pred_file_timestamp = datetime.datetime.now().strftime('%Y-%m-%d')
     # pred_filename = "covid_predictions_{TIME}.csv".format(TIME=pred_file_timestamp)
@@ -416,13 +415,13 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
 
     # --- Initiate the upload ---
     if verbose:
-        print('Importing uploaded predictions df to Anaplan model...')
+        print('Uploading predictions df to Anaplan...')
     pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, predictions_file_id, data_file, token_auth_user)
     print(pred_file_upload_response)
 
     # --- Execute the import ---
     if verbose:
-        print('Uploading predictions df to Anaplan...')
+        print('Importing uploaded predictions df to Anaplan...')
     post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, predictions_import_id, token_auth_user)
     print(post_import_file_response)
     print(post_import_file_data)
