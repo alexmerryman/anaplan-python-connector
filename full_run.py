@@ -11,14 +11,17 @@ import model_covid
 def load_creds():
     """
     creds.json schema:
-
     {
     "username": "user@domain.com",
     "password": "password",
-    "`project`": {
-        "workspace_id": "xxxxxxxxxxxxxxxxxxx",
+    "`project-name`": {
+        "workspace_id": "xxxxxxxxxxxxxxxxxxx", -- easiest to get these id's from Postman
         "model_id": "xxxxxxxxxxxxxxxxxxx",
-        "export_id": "xxxxxxxxxxxxxxxxxxx"
+        "df_export_id": "xxxxxxxxxxxxxxxxxxx",
+        "params_export_id": "xxxxxxxxxxxxxxxxxxx",
+        "import_predictions_file_id": "xxxxxxxxxxxxxxxxxxx",
+        "upload_file_import_id": "xxxxxxxxxxxxxxxxxxx",
+        "import_preds_process_id": "xxxxxxxxxxxxxxxxxxx"
         }
     }
 
@@ -245,18 +248,16 @@ def validate_df(df_historical):
 def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     """
     # TODO: Update these steps & docstring
-    Run get_anaplan_params.py
-    Parse chunk_data_parsed_array (set var name = its accompanying value)
-    Plug vars into curvefit model (COVID deaths?)
-    Get resulting projections (as CSV?)
-    Import projections back into Anaplan.
+    - Run get_anaplan_params.py
+    - Parse chunk_data_parsed_array (set var name = its accompanying value)
+    - Plug vars into curvefit model (COVID deaths?)
+    - Get resulting projections (as CSV?)
+    - Import projections back into Anaplan.
 
-    :param verbose:
-    :param arg1:
-    :param arg2:
-    :param arg3:
-    :param etc:
+    :param num_time_predict:
     :param sim_data:
+    :param verbose:
+    :param dry_run:
     :return:
     """
     if verbose:
