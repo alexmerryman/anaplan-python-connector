@@ -347,7 +347,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # print(df_predictions.tail())
 
     # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
-    df_predictions.at[0, 'death_rate'] = -2222
+    df_predictions.at[0, 'death_rate'] = -999
     print(df_predictions.head())
 
     # pred_file_timestamp = datetime.datetime.now().strftime('%Y-%m-%d')
