@@ -67,8 +67,6 @@ def anaplan_get_export_params(auth_token, verbose=False):
     if verbose:
         print('Loading Anaplan credential from creds.json')
     san_diego_demo_creds = load_creds()
-    # san_diego_demo_email = san_diego_demo_creds['username']
-    # san_diego_demo_pwd = san_diego_demo_creds['password']
 
     wGuid = san_diego_demo_creds['san-diego-demo']['workspace_id']
     mGuid = san_diego_demo_creds['san-diego-demo']['model_id']
@@ -89,24 +87,7 @@ def anaplan_get_export_params(auth_token, verbose=False):
     if verbose:
         print('------------------- CREATING PARAMS (POST) EXPORT TASK -------------------')
     anaplan_param_export_task_response, anaplan_param_export_task_json = anaplan_connect_helper_functions.post_export_task(wGuid, mGuid, param_export_id, auth_token)
-    # if verbose:
-    #     print(anaplan_param_export_task_json)
-    #     print(anaplan_param_export_task_json['task']['taskId'])
-    #     print(anaplan_param_export_task_json['task']['taskState'])
 
-    # if verbose:
-    #     print('------------------- GETTING EXPORT TASK DETAILS -------------------')
-    # anaplan_param_export_task_details_response, anaplan_param_export_task_details_json = anaplan_connect_helper_functions.get_export_task_details(wGuid, mGuid, param_export_id, anaplan_param_export_task_json['task']['taskId'], auth_token)
-    # if verbose:
-    #     print(anaplan_param_export_task_details_json)
-    #     print(anaplan_param_export_task_details_json['task']['taskState'])
-    #
-    # # Once 'taskState' == 'COMPLETE', run get_files()
-    # if verbose:
-    #     print('------------------- GETTING ALL MODEL FILES -------------------')
-    # model_files__response, model_files_json = anaplan_connect_helper_functions.get_model_files(wGuid, mGuid, auth_token)
-    # if verbose:
-    #     print(model_files_json)
 
     # Then, get all chunks
     if verbose:
@@ -151,8 +132,6 @@ def anaplan_get_export_historical_df(auth_token, verbose=False):
     if verbose:
         print('Loading Anaplan credential from creds.json')
     san_diego_demo_creds = load_creds()
-    # san_diego_demo_email = san_diego_demo_creds['username']
-    # san_diego_demo_pwd = san_diego_demo_creds['password']
 
     wGuid = san_diego_demo_creds['san-diego-demo']['workspace_id']
     mGuid = san_diego_demo_creds['san-diego-demo']['model_id']
@@ -230,20 +209,6 @@ def validate_df(df_historical):
     return None
 
 
-# def anaplan_import_data(verbose=False):
-#     # TODO: try/except?
-#     if verbose:
-#         print('Loading Anaplan credential from creds.json')
-#     san_diego_demo_creds = load_creds()
-#     san_diego_demo_email = san_diego_demo_creds['username']
-#     san_diego_demo_pwd = san_diego_demo_creds['password']
-#
-#     wGuid = san_diego_demo_creds['san-diego-demo']['workspace_id']
-#     mGuid = san_diego_demo_creds['san-diego-demo']['model_id']
-#     import_id = san_diego_demo_creds['san-diego-demo']['import_id']
-#     import_predictions_file_id = san_diego_demo_creds['san-diego-demo']['import_predictions_file_id']
-
-
 def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     """
     # TODO: Update these steps & docstring
@@ -270,7 +235,6 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
 
     wGuid = san_diego_demo_creds['san-diego-demo']['workspace_id']
     mGuid = san_diego_demo_creds['san-diego-demo']['model_id']
-    # param_export_id = san_diego_demo_creds['san-diego-demo']['params_export_id']
     predictions_file_id = san_diego_demo_creds['san-diego-demo']['predictions_file_id']
     predictions_import_id = san_diego_demo_creds['san-diego-demo']['predictions_import_id']
 
@@ -383,7 +347,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # print(df_predictions.tail())
 
     # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
-    df_predictions.at[0, 'death_rate'] = -1999
+    df_predictions.at[0, 'death_rate'] = -999
     print(df_predictions.head())
 
     # pred_file_timestamp = datetime.datetime.now().strftime('%Y-%m-%d')
@@ -428,15 +392,32 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
 
     # Once import is complete, delete the .\temp directory
 
-    # TODO: Check whether the import action was successful, how many rows uploaded/ignored, etc
+    # TODO: Check whether the import action was successful, how many rows uploaded/ignored, failure dump, etc
 
+    model_run_timestamp = datetime.datetime.now().strftime('%m/%d/%Y')
+    model_run_df = pd.DataFrame([model_run_timestamp], columns=['date'])
+    model_run_filename = "date_model_ran.csv"
+    pd.DataFrame.to_csv(model_run_df, model_run_filename, index=False)
+
+    model_timestamp_data_file = open(model_run_filename, 'r').read().encode('utf-8')
+
+    model_run_timestamp_file_id = san_diego_demo_creds['san-diego-demo']['model_run_timestamp_file_id']
+    model_run_timestamp_import_id = san_diego_demo_creds['san-diego-demo']['model_run_timestamp_import_id']
+
+    # --- Initiate the upload ---
+    if verbose:
+        print('Uploading model timestamp to Anaplan...')
+    model_timestamp_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, model_run_timestamp_file_id, model_timestamp_data_file, token_auth_user)
+    print(model_timestamp_file_upload_response)
+
+    # --- Execute the import ---
+    if verbose:
+        print('Importing uploaded model timestamp to Anaplan...')
+    model_timestamp_post_import_file_response, model_timestamp_post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, model_run_timestamp_import_id, token_auth_user)
+    print(model_timestamp_post_import_file_response)
+    print(model_timestamp_post_import_file_data)
 
 
 if __name__ == "__main__":
     # TODO: Use argparse to enable args from CLI?
     main(sim_data=False, verbose=True, dry_run=False)
-
-
-
-
-# TODO: Set up Flask instance to run this from Anaplan -- trigger via button

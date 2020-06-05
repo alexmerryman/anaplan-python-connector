@@ -172,9 +172,9 @@ def put_upload_file(wGuid, mGuid, file_id, data_file, user):
                                                 headers=headers,
                                                 data=data_file)
         if put_import_file_response.ok:
-            print('SUCCESS! File Upload Successful (via put_upload_file()).')
+            print('SUCCESS! File Upload Successful (via Anaplan helper function `put_upload_file()`).')
         else:
-            print('Something wrong with file upload.')
+            print('Something wrong with file upload - response: {}.'.format(put_import_file_response))
         # put_import_file_data = json.loads(put_import_file_response.text)
     except Exception as e:
         put_import_file_response = None
