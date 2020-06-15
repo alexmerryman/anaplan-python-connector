@@ -168,13 +168,13 @@ def put_upload_file(wGuid, mGuid, file_id, data_file, user):
 
     try:
         # TODO: If file is broken into multiple chunks i (larger than 10MB), repeat put request for ".../chunks/{i}"
-        put_import_file_response = requests.put('https://api.anaplan.com/2/0/workspaces/{WGUID}/models/{MGUID}/files/{FILEID}/chunks/0'.format(WGUID=wGuid, MGUID=mGuid, FILEID=file_id),
+        put_import_file_response = requests.put('https://api.anaplan.com/2/0/workspaces/{WGUID}/models/{MGUID}/files/{FILEID}'.format(WGUID=wGuid, MGUID=mGuid, FILEID=file_id),
                                                 headers=headers,
                                                 data=data_file)
         if put_import_file_response.ok:
             print('SUCCESS! File Upload Successful (via Anaplan helper function `put_upload_file()`).')
         else:
-            print('Something wrong with file upload - response: {}.'.format(put_import_file_response))
+            print('Something wrong with file upload (PUT request) - response: {}.'.format(put_import_file_response))
         # put_import_file_data = json.loads(put_import_file_response.text)
     except Exception as e:
         put_import_file_response = None
