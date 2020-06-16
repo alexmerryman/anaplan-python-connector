@@ -313,7 +313,8 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     #     # TODO: Raise an exception/alert to the user if the DF is in an invalid format
     #     raise
 
-    print(df_historical.head())
+    # print(df_historical.head())
+
     model_args_dict = {
         'df': df_historical,
         'col_t': 'time_obs',
@@ -348,7 +349,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
 
     # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
     df_predictions.at[0, 'death_rate'] = -999
-    print(df_predictions.head())
+    # print(df_predictions.head())
 
     # pred_file_timestamp = datetime.datetime.now().strftime('%Y-%m-%d')
     # pred_filename = "covid_predictions_{TIME}.csv".format(TIME=pred_file_timestamp)
@@ -381,14 +382,14 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     if verbose:
         print('Uploading predictions df to Anaplan...')
     pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, predictions_file_id, data_file, token_auth_user)
-    print(pred_file_upload_response)
+    # print(pred_file_upload_response)
 
     # --- Execute the import ---
     if verbose:
         print('Importing uploaded predictions df to Anaplan...')
     post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, predictions_import_id, token_auth_user)
-    print(post_import_file_response)
-    print(post_import_file_data)
+    # print(post_import_file_response)
+    # print(post_import_file_data)
 
     # Once import is complete, delete the .\temp directory
 
@@ -408,14 +409,16 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     if verbose:
         print('Uploading model timestamp to Anaplan...')
     model_timestamp_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, model_run_timestamp_file_id, model_timestamp_data_file, token_auth_user)
-    print(model_timestamp_file_upload_response)
+    # print(model_timestamp_file_upload_response)
 
     # --- Execute the import ---
     if verbose:
         print('Importing uploaded model timestamp to Anaplan...')
     model_timestamp_post_import_file_response, model_timestamp_post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, model_run_timestamp_import_id, token_auth_user)
-    print(model_timestamp_post_import_file_response)
-    print(model_timestamp_post_import_file_data)
+    # print(model_timestamp_post_import_file_response)
+    # print(model_timestamp_post_import_file_data)
+
+    return df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response
 
 
 if __name__ == "__main__":

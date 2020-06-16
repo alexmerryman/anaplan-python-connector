@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Anaplan-Python Connector Flask App - Full Run w/ Sim Data</title>
+</head>
+<body>
+    <div>Connector App: <a href="/index">Home</a> <a href="/test_main">Test Main</a> <a href="/full_run_simdata">Full Run w/ Sim Data</a></div>
+
+    <h3>Predictions</h3>
+<!--<table>{{ full_run_data.df_predictions }}</table>-->
+<!--{% for table in tables %}-->
+    {{ full_run_data.df_predictions | safe }}
+<!--{% endfor %}-->
+
+    <h3>Predictions File Upload (PUT) Response</h3>
+    <div>{{ full_run_data.pred_file_upload_response }}</div>
+
+    <h3>Predictions File Import (POST) Response</h3>
+    <div>{{ full_run_data.post_import_file_response_code }} - {{ full_run_data.post_import_file_response_message }}</div>
+
+    <h3>Model Run Timestamp Upload (PUT) Response</h3>
+    <div>{{ full_run_data.model_timestamp_file_upload_response }}</div>
+
+    <h3>Model Run Timestamp Import (POST) Response</h3>
+    <div>{{ full_run_data.model_timestamp_post_import_file_response_code }} - {{ full_run_data.model_timestamp_post_import_file_response_message }}</div>
+
+</body>
+</html>
