@@ -359,6 +359,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # Save predictions df locally as CSV
     if verbose:
         print('Saving predictions df as a CSV locally...')
+    # TODO: Save to temp/staging directory
     pd.DataFrame.to_csv(df_predictions, pred_filename, index=False)
 
     # --- Import predictions csv into Anaplan ---
@@ -378,17 +379,18 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # - Private files are stored in models and removed if not accessed at least once in 48 hours. If your private file no longer exists for a file Import Data Source or file Export Action, the default file is used instead.
 
     # TODO: Currently assuming the data to upload/import fits within 1 chunk (<10 MB)
+    # TODO: Read from temp/staging directory
     data_file = open(pred_filename, 'r').read().encode('utf-8')
 
     # --- Initiate the upload ---
     if verbose:
-        print('Uploading predictions df to Anaplan...')
+        print('Uploading predictions DF to Anaplan...')
     pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, predictions_file_id, data_file, token_auth_user)
     # print(pred_file_upload_response)
 
     # --- Execute the import ---
     if verbose:
-        print('Importing uploaded predictions df to Anaplan...')
+        print('Importing uploaded predictions DF to Anaplan...')
     post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, predictions_import_id, token_auth_user)
     # print(post_import_file_response)
     # print(post_import_file_data)
@@ -398,11 +400,13 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # TODO: Check whether the import action was successful, how many rows uploaded/ignored, failure dump, etc
 
     # TODO: Function-ize this
+    # TODO: Save to temp/staging directory
     model_run_timestamp = datetime.datetime.now().strftime('%m/%d/%Y')
     model_run_df = pd.DataFrame([model_run_timestamp], columns=['date'])
     model_run_filename = "date_model_ran.csv"
     pd.DataFrame.to_csv(model_run_df, model_run_filename, index=False)
 
+    # TODO: Read from temp/staging directory
     model_timestamp_data_file = open(model_run_filename, 'r').read().encode('utf-8')
 
     model_run_timestamp_file_id = san_diego_demo_creds['san-diego-demo']['model_run_timestamp_file_id']
@@ -412,18 +416,20 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     if verbose:
         print('Uploading model timestamp to Anaplan...')
     model_timestamp_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, model_run_timestamp_file_id, model_timestamp_data_file, token_auth_user)
-    # print(model_timestamp_file_upload_response)
+    if verbose:  # TODO: Replicate this verbosity elsewhere; should this be a separate level of (greater) verbosity?
+        print("Timestamp upload (PUT) response:", model_timestamp_file_upload_response)
 
     # --- Execute the import ---
     if verbose:
-        print('Importing uploaded model timestamp to Anaplan...')
+        print("Importing uploaded model timestamp to Anaplan...")
     model_timestamp_post_import_file_response, model_timestamp_post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, model_run_timestamp_import_id, token_auth_user)
-    # print(model_timestamp_post_import_file_response)
-    # print(model_timestamp_post_import_file_data)
+    if verbose:
+        print("Timestamp import (POST) response:", model_timestamp_post_import_file_response)
+        print("Data:\n", model_timestamp_post_import_file_data)
 
     return df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response
 
 
 if __name__ == "__main__":
-    # TODO: Use argparse to enable args from CLI?
+    # TODO: Use argparse library to enable args from CLI?
     main(sim_data=False, verbose=True, dry_run=False)
