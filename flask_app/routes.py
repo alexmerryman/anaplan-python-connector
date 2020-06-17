@@ -19,6 +19,7 @@ def test_main_route_def():
 
 @app.route("/full_run_simdata")
 def full_run_simdata():
+    # TODO: Cache the data in case you navigate away, it doesn't have to re-run/re-calculate everything?
     df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, \
     model_timestamp_post_import_file_response = full_run.main(sim_data=True, verbose=True, dry_run=True)
 
