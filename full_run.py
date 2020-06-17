@@ -238,6 +238,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     predictions_file_id = san_diego_demo_creds['san-diego-demo']['predictions_file_id']
     predictions_import_id = san_diego_demo_creds['san-diego-demo']['predictions_import_id']
 
+    # TODO: Function-ize this
     # TODO: Store token somewhere, and if it expires, refresh it?
     token_generated = anaplan_connect_helper_functions.anaplan_create_token(san_diego_demo_email, san_diego_demo_pwd)
     token_auth_user = anaplan_connect_helper_functions.generate_token_auth_user(san_diego_demo_email, san_diego_demo_pwd, token=token_generated)
@@ -249,6 +250,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     if sim_data:
         if verbose:
             print('No data provided; using simulated data.')
+        # TODO: Function-ize this
         # Create example data -- both death rate and log death rate
         np.random.seed(1234)
 
@@ -395,6 +397,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
 
     # TODO: Check whether the import action was successful, how many rows uploaded/ignored, failure dump, etc
 
+    # TODO: Function-ize this
     model_run_timestamp = datetime.datetime.now().strftime('%m/%d/%Y')
     model_run_df = pd.DataFrame([model_run_timestamp], columns=['date'])
     model_run_filename = "date_model_ran.csv"
