@@ -32,3 +32,12 @@ def full_run_simdata():
                      }
 
     return render_template('full_run.html', tables=[df_predictions.to_html()], full_run_data=full_run_data)
+
+
+@app.route("/monitor_anaplan")  # TODO: Should this route be linked to "/" so it executes immediately? Or require user input to begin?
+def monitor_anaplan():
+    # TODO: Create/use function in anaplan_connect_helper_functions -- monitor actions stream, and whenever one changes, execute full_run()
+    # Will have to generate user auth token -- make sure to use this with the rest of the app? Don't regenerate every time.
+    # Represent "button press" as a model action?
+    # Possible to continuously monitor? Or instead, get a snapshot every X seconds? Take snapshot initially, then monitor every X seconds
+    pass
