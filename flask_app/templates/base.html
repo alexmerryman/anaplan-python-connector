@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        {% if title %}
+        <title>{{ title }}</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+        {% else %}
+        <title>Anaplan-Python Connector Flask App</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+        {% endif %}
+    </head>
+    <body>
+        <div>Anaplan-Python Connector App Links:</div>
+        <div>
+            <ul>
+                <li><a href="{{ url_for('index') }}">Home</a></li>
+                <li><a href="{{ url_for('test_main') }}">Test Main</a></li>
+                <li><a href="{{ url_for('full_run_simdata') }}">Full Run w/ Simulated Data</a></li>
+                <li><a href="{{ url_for('full_run_realdata') }}">Full Run w/ Real Data</a></li>
+                <li><a href="{{ url_for('workspaces') }}">Get All Available Workspaces</a></li>
+                <li><a href="{{ url_for('model_exports') }}">Get All Model Exports</a></li>
+            </ul>
+        </div>
+        <hr>
+        {% block content %}{% endblock %}
+    </body>
+</html>

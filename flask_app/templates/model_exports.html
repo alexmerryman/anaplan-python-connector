@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h3>Available model exports (select one):</h3>
+<!--    <div>{{ model_exports }}</div>-->
+    {% for m in model_exports %}
+    <ul>
+        <li>{{ m.name }} ({{ m.id }}) ({{ m.exportFormat }})</li>
+    </ul>
+    {% endfor %}
+{% endblock %}

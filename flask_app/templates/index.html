@@ -1,16 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    {% if title %}
-    <title>{{title}} - Index</title>
-    {% else %}
-    <title>Anaplan-Python Connector Flask App - Index</title>
-    {% endif %}
-</head>
-<body>
-    <h1>{{title}} - Index</h1>
-    <div>Connector App: <a href="/index">Home</a> <a href="/test_main">Test Main</a> <a href="/full_run_simdata">Full Run w/ Sim Data</a></div>
+{% extends "base.html" %}
+
+{% block content %}
     <h3>Hello {{user.username}}, thanks for using this app!</h3>
-</body>
-</html>
+{% endblock %}

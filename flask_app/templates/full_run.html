@@ -1,30 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Anaplan-Python Connector Flask App - Full Run w/ Sim Data</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-</head>
-<body>
-    <div>Connector App: <a href="/index">Home</a> <a href="/test_main">Test Main</a> <a href="/full_run_simdata">Full Run w/ Sim Data</a></div>
+{% extends "base.html" %}
+
+{% block content %}
+    <h3>Historical Data</h3>
+    {% if full_run_data.df_historical %}
+        {{ full_run_data.df_historical | safe }}
+    {% else %}
+        <div><p>Error: Historical DF does not exist.</p></div>
+    {% endif %}
 
     <h3>Predictions</h3>
 <!--<table>{{ full_run_data.df_predictions }}</table>-->
 <!--{% for table in tables %}-->
-    {{ full_run_data.df_predictions | safe }}
+    {% if full_run_data.df_predictions %}
+        {{ full_run_data.df_predictions | safe }}
+    {% else %}
+        <div><p>Error: Predictions DF does not exist.</p></div>
+    {% endif %}
 <!--{% endfor %}-->
 
     <h3>Predictions File Upload (PUT) Response</h3>
-    <div>{{ full_run_data.pred_file_upload_response }}</div>
+    {% if full_run_data.pred_file_upload_response %}
+        <div>{{ full_run_data.pred_file_upload_response }}</div>
+    {% else %}
+        <div><p>Error: Predictions File Upload (PUT) Response does not exist.</p></div>
+    {% endif %}
 
     <h3>Predictions File Import (POST) Response</h3>
-    <div>{{ full_run_data.post_import_file_response_code }} - {{ full_run_data.post_import_file_response_message }}</div>
+    {% if full_run_data.post_import_file_response_code %}
+        <div>{{ full_run_data.post_import_file_response_code }} - {{ full_run_data.post_import_file_response_message }}</div>
+    {% else %}
+        <div><p>Error: Predictions File Import (POST) Response does not exist.</p></div>
+    {% endif %}
 
     <h3>Model Run Timestamp Upload (PUT) Response</h3>
-    <div>{{ full_run_data.model_timestamp_file_upload_response }}</div>
+    {% if full_run_data.model_timestamp_file_upload_response %}
+        <div>{{ full_run_data.model_timestamp_file_upload_response }}</div>
+    {% else %}
+        <div><p>Error: Model Run Timestamp Upload (PUT) Response does not exist.</p></div>
+    {% endif %}
 
     <h3>Model Run Timestamp Import (POST) Response</h3>
-    <div>{{ full_run_data.model_timestamp_post_import_file_response_code }} - {{ full_run_data.model_timestamp_post_import_file_response_message }}</div>
+    {% if full_run_data.model_timestamp_post_import_file_response_code %}
+        <div>{{ full_run_data.model_timestamp_post_import_file_response_code }} - {{ full_run_data.model_timestamp_post_import_file_response_message }}</div>
+    {% else %}
+        <div><p>Error: Model Run Timestamp Import (POST) Response does not exist.</p></div>
+    {% endif %}
 
-</body>
-</html>
+{% endblock %}
