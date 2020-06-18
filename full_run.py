@@ -62,6 +62,61 @@ def load_creds():
 #         pickle.dump(creds, token)
 
 
+def generate_auth_token(creds, verbose=False):
+    # TODO
+    pass
+
+
+def anaplan_get_user_trigger_status(auth_token, verbose=False):
+    if verbose:
+        print('Loading Anaplan credential from creds.json')
+    san_diego_demo_creds = load_creds()
+
+    wGuid = san_diego_demo_creds['san-diego-demo']['workspace_id']
+    mGuid = san_diego_demo_creds['san-diego-demo']['model_id']
+    user_trigger_export_id = san_diego_demo_creds['san-diego-demo']['user_trigger_export_id']
+
+    if verbose:
+        print('------------------- GETTING PARAMS FILE INFO (CHUNK METADATA) -------------------')
+    chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid,
+                                                                                                       user_trigger_export_id, auth_token)
+    if verbose:
+        print(chunk_metadata_json)
+
+    if verbose:
+        print('------------------- GETTING PARAMS CHUNK DATA -------------------')
+        print('Total number of chunks: {}'.format(len(chunk_metadata_json['chunks'])))
+
+    # if len(chunk_metadata_json['chunks']) == 1:
+    chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid,
+                                                                                           user_trigger_export_id,
+                                                                                           chunk_metadata_json['chunks'][0]['id'],
+                                                                                           auth_token)
+    chunk_data_parsed = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
+
+    print(chunk_data_text)
+    print(chunk_data_parsed)
+    print(chunk_data_parsed[1][1])
+
+    user_trigger_status = chunk_data_parsed[1][1]
+    print("user_trigger_status == 'true'?", user_trigger_status == 'true')
+
+    # TODO: Reset the state of the trigger to False
+
+
+
+san_diego_demo_creds = load_creds()
+san_diego_demo_email = san_diego_demo_creds['username']
+san_diego_demo_pwd = san_diego_demo_creds['password']
+token_generated = anaplan_connect_helper_functions.anaplan_create_token(san_diego_demo_email, san_diego_demo_pwd)
+token_auth_user = anaplan_connect_helper_functions.generate_token_auth_user(san_diego_demo_email, san_diego_demo_pwd, token=token_generated)
+anaplan_get_user_trigger_status(token_auth_user, verbose=True)
+
+
+
+
+
+
 def anaplan_get_export_params(auth_token, verbose=False):
     # TODO: try/except?
     if verbose:
@@ -430,6 +485,6 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     return df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response
 
 
-if __name__ == "__main__":
-    # TODO: Use argparse library to enable args from CLI?
-    main(sim_data=False, verbose=True, dry_run=False)
+# if __name__ == "__main__":
+#     # TODO: Use argparse library to enable args from CLI?
+#     main(sim_data=False, verbose=True, dry_run=False)
