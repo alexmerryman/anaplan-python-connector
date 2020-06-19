@@ -30,7 +30,6 @@ def load_creds():
     :return: creds (dict): Contains relevant credentials for logging into Anaplan and creating a token to access the API
     """
 
-    # TODO: The user won't know export_id, file_id, or import_id's
     cred_path = "creds.json"
     if not os.path.isfile(cred_path):
         print('ERROR: No file called `creds.json` found in the path.')
@@ -71,7 +70,7 @@ def generate_auth_token(creds, verbose=False):
     token_generated = anaplan_connect_helper_functions.anaplan_create_token(email, pwd)
     token_auth_user = anaplan_connect_helper_functions.generate_token_auth_user(email, pwd, token=token_generated)
     # TODO: Save to json w/ expiration time, to know when to refresh
-    return token_auth_user
+    return token_generated, token_auth_user
 
 
 san_diego_demo_creds = load_creds()
@@ -273,8 +272,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     predictions_file_id = creds['san-diego-demo']['predictions_file_id']
     predictions_import_id = creds['san-diego-demo']['predictions_import_id']
 
-    # TODO: Store token somewhere, and if it expires, refresh it?
-    token_auth_user = generate_auth_token(creds)
+    token_generated, token_auth_user = generate_auth_token(creds)
 
     if flask_app_helper_functions.anaplan_get_user_trigger_status(token_auth_user, creds):
         # TODO
