@@ -6,6 +6,7 @@ import pandas as pd
 import datetime
 import anaplan_connect_helper_functions
 import model_covid
+import flask_app_helper_functions
 
 
 def load_creds():
@@ -62,15 +63,29 @@ def load_creds():
 #         pickle.dump(creds, token)
 
 
-def anaplan_get_export_params(auth_token, verbose=False):
-    # TODO: try/except?
+def generate_auth_token(creds, verbose=False):
+    email = creds['username']
+    pwd = creds['password']
     if verbose:
-        print('Loading Anaplan credential from creds.json')
-    san_diego_demo_creds = load_creds()
+        print("Generating Anaplan API authorization token...")
+    token_generated = anaplan_connect_helper_functions.anaplan_create_token(email, pwd)
+    token_auth_user = anaplan_connect_helper_functions.generate_token_auth_user(email, pwd, token=token_generated)
+    # TODO: Save to json w/ expiration time, to know when to refresh
+    return token_auth_user
 
-    wGuid = san_diego_demo_creds['san-diego-demo']['workspace_id']
-    mGuid = san_diego_demo_creds['san-diego-demo']['model_id']
-    param_export_id = san_diego_demo_creds['san-diego-demo']['params_export_id']
+
+san_diego_demo_creds = load_creds()
+token_auth_user = generate_auth_token(san_diego_demo_creds)
+flask_app_helper_functions.anaplan_get_user_trigger_status(token_auth_user, san_diego_demo_creds, verbose=False)
+
+workspace_id = san_diego_demo_creds['san-diego-demo']['workspace_id']
+model_id = san_diego_demo_creds['san-diego-demo']['model_id']
+
+
+def anaplan_get_export_params(auth_token, creds, verbose=False):
+    wGuid = creds['san-diego-demo']['workspace_id']  # TODO: Get this from user input via list_workspaces
+    mGuid = creds['san-diego-demo']['model_id']  # TODO: Get this from user input via list_models
+    param_export_id = creds['san-diego-demo']['params_export_id']   # TODO: Get this from user input via list_exports
 
     if verbose:
         print('------------------- GETTING PARAMS EXPORT DATA -------------------')
@@ -105,8 +120,6 @@ def anaplan_get_export_params(auth_token, verbose=False):
                                                                                                param_export_id, chunk_metadata_json['chunks'][0]['id'],
                                                                                                auth_token)
         chunk_data_parsed = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
-        # if verbose:
-        #     print(chunk_data_parsed)
 
         return chunk_data_parsed
 
@@ -127,15 +140,10 @@ def anaplan_get_export_params(auth_token, verbose=False):
         return all_param_chunk_data
 
 
-def anaplan_get_export_historical_df(auth_token, verbose=False):
-    # TODO: try/except?
-    if verbose:
-        print('Loading Anaplan credential from creds.json')
-    san_diego_demo_creds = load_creds()
-
-    wGuid = san_diego_demo_creds['san-diego-demo']['workspace_id']
-    mGuid = san_diego_demo_creds['san-diego-demo']['model_id']
-    df_export_id = san_diego_demo_creds['san-diego-demo']['df_export_id']
+def anaplan_get_export_historical_df(auth_token, creds, verbose=False):
+    wGuid = creds['san-diego-demo']['workspace_id']
+    mGuid = creds['san-diego-demo']['model_id']
+    df_export_id = creds['san-diego-demo']['df_export_id']
 
     if verbose:
         print('------------------- GETTING HISTORICAL DF EXPORT DATA -------------------')
@@ -209,6 +217,32 @@ def validate_df(df_historical):
     return None
 
 
+def simulate_data():
+    # Create example data -- both death rate and log death rate
+    np.random.seed(1234)
+
+    df_historical = pd.DataFrame()
+    df_historical['time_obs'] = np.arange(30)
+    df_historical['death_rate'] = np.exp(.1 * (df_historical['time_obs'] - 20)) / (
+                1 + np.exp(.1 * (df_historical['time_obs'] - 20))) + \
+                                  np.random.normal(0, 0.1, size=30).cumsum()
+    df_historical['ln_death_rate'] = np.log(df_historical['death_rate'])
+    df_historical['group'] = 'all'
+    df_historical['intercept'] = 1.0  # Default to 1.0 ?
+    fe_init = [0, 0, 1.]
+    fe_gprior = [[0, np.inf], [0, np.inf], [1., np.inf]]
+    fe_bounds = [[0., 100.], [0., 100.], [0., 100.]]
+
+    sim_data_dict = {}
+    sim_data_dict['df_historical'] = df_historical
+    sim_data_dict['fe_init'] = fe_init
+    sim_data_dict['fe_gprior'] = fe_gprior
+    sim_data_dict['fe_bounds'] = fe_bounds
+
+    return sim_data_dict
+
+
+# TODO: Split this into 2 functions: full_run_simdata, full_run_realdata?
 def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     """
     # TODO: Update these steps & docstring
@@ -227,20 +261,24 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     :param dry_run: (bool) Whether to execute a dry_run or not -- dry_run will run with verbose=True and sim_data=True
     :return:
     """
+
     if verbose:
         print('Loading Anaplan credential from creds.json')
-    san_diego_demo_creds = load_creds()
-    san_diego_demo_email = san_diego_demo_creds['username']
-    san_diego_demo_pwd = san_diego_demo_creds['password']
+    creds = load_creds()
+    san_diego_demo_email = creds['username']
+    san_diego_demo_pwd = creds['password']
 
-    wGuid = san_diego_demo_creds['san-diego-demo']['workspace_id']
-    mGuid = san_diego_demo_creds['san-diego-demo']['model_id']
-    predictions_file_id = san_diego_demo_creds['san-diego-demo']['predictions_file_id']
-    predictions_import_id = san_diego_demo_creds['san-diego-demo']['predictions_import_id']
+    wGuid = creds['san-diego-demo']['workspace_id']
+    mGuid = creds['san-diego-demo']['model_id']
+    predictions_file_id = creds['san-diego-demo']['predictions_file_id']
+    predictions_import_id = creds['san-diego-demo']['predictions_import_id']
 
     # TODO: Store token somewhere, and if it expires, refresh it?
-    token_generated = anaplan_connect_helper_functions.anaplan_create_token(san_diego_demo_email, san_diego_demo_pwd)
-    token_auth_user = anaplan_connect_helper_functions.generate_token_auth_user(san_diego_demo_email, san_diego_demo_pwd, token=token_generated)
+    token_auth_user = generate_auth_token(creds)
+
+    if flask_app_helper_functions.anaplan_get_user_trigger_status(token_auth_user, creds):
+        # TODO
+        pass
 
     if dry_run:
         sim_data = True
@@ -249,32 +287,27 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     if sim_data:
         if verbose:
             print('No data provided; using simulated data.')
-        # Create example data -- both death rate and log death rate
-        np.random.seed(1234)
+        sim_data_dict = simulate_data()
 
-        df_historical = pd.DataFrame()
-        df_historical['time_obs'] = np.arange(30)
-        df_historical['death_rate'] = np.exp(.1 * (df_historical['time_obs'] - 20)) / (1 + np.exp(.1 * (df_historical['time_obs'] - 20))) + \
-                           np.random.normal(0, 0.1, size=30).cumsum()
-        df_historical['ln_death_rate'] = np.log(df_historical['death_rate'])
-        df_historical['group'] = 'all'
-        df_historical['intercept'] = 1.0  # Default to 1.0 ?
-        fe_init = [0, 0, 1.]
-        fe_gprior = [[0, np.inf], [0, np.inf], [1., np.inf]]
-        fe_bounds = [[0., 100.], [0., 100.], [0., 100.]]
+        df_historical = sim_data_dict['df_historical']
+        fe_init = sim_data_dict['fe_init']
+        fe_gprior = sim_data_dict['fe_gprior']
+        fe_bounds = sim_data_dict['fe_bounds']
 
         # pd.DataFrame.to_csv(df, "covid_sim_data.csv", index=False)
 
     else:  # if sim_data == False, connect to Anaplan to get 'real' data
         if verbose:
             print('Getting params from Anaplan...')
-        params_chunks_unparsed = anaplan_get_export_params(token_auth_user, verbose=verbose)
+
+        params_chunks_unparsed = anaplan_get_export_params(token_auth_user, creds, verbose=verbose)
         params = parse_params_chunk_data(params_chunks_unparsed)
 
         if verbose:
             print('Getting historical df from Anaplan...')
-        df_historical = anaplan_get_export_historical_df(token_auth_user, verbose=verbose)
+        df_historical = anaplan_get_export_historical_df(token_auth_user, creds, verbose=verbose)
 
+        # TODO: Function-ize this?
         df_historical['time_obs'] = df_historical['time_obs'].astype(int)
         df_historical['death_rate'] = df_historical['death_rate'].astype(float)
         df_historical['ln_death_rate'] = np.log(df_historical['death_rate'])
@@ -313,7 +346,8 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     #     # TODO: Raise an exception/alert to the user if the DF is in an invalid format
     #     raise
 
-    print(df_historical.head())
+    # print(df_historical.head())
+
     model_args_dict = {
         'df': df_historical,
         'col_t': 'time_obs',
@@ -324,8 +358,8 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
         'link_fun': [lambda x: x, lambda x: x, lambda x: x],
         'var_link_fun': [lambda x: x, lambda x: x, lambda x: x],
         # 'fun': ln_gaussian_cdf,  # TODO -- must import ln_gaussian_cdf here? model_covid.py cannot parse a string value here -- must be the function/object from curvefit.core.functions
-        'fe_init': fe_init, #[0, 0, 1.],
-        'fe_gprior': fe_gprior, #[[0, np.inf], [0, np.inf], [1., np.inf]]
+        'fe_init': fe_init,
+        'fe_gprior': fe_gprior,
         'fe_bounds': fe_bounds,
         'num_time_predict': num_time_predict
     }
@@ -337,87 +371,92 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # invert ln(death rate) to get predicted actual death rate
     df_predictions['death_rate'] = np.exp(df_predictions['prediction_ln_death_rate'])
 
+    # TODO: Add `group` ('all'), `intercept` (1.0) columns to df_predictions -- first change format in Anaplan to ensure compatibility on upload/import?
     # # Keep only the actual death rate column
     # df_predictions = df_predictions[['time_pred', 'death_rate']]
 
-    # print(df_historical.head())
-    # print(df_historical.tail())
-    # print(num_time_predict)
-    # print(df_predictions.head())
-    # print(df_predictions.tail())
-
     # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
-    df_predictions.at[0, 'death_rate'] = -222
-    print(df_predictions.head())
+    df_predictions.at[0, 'death_rate'] = -999
+    # print(df_predictions.head())
+
+    tmp_path = os.path.join(os.getcwd(), "tmp")
+    try:
+        os.makedirs(tmp_path)
+        if verbose:
+            print("`/tmp` directory successfully created.")
+    except OSError:
+        if verbose:
+            print("`/tmp` directory already exists.")
+        pass  # tmp_path directory already exists
 
     # pred_file_timestamp = datetime.datetime.now().strftime('%Y-%m-%d')
     # pred_filename = "covid_predictions_{TIME}.csv".format(TIME=pred_file_timestamp)
+    # TODO: Get pred_filename from Anaplan (select)?
     pred_filename = "Covid_Predictions.csv"  # This must the be exact name of the file currently in Anaplan which you are replacing/updating
     # Save predictions df locally as CSV
     if verbose:
-        print('Saving predictions df as a CSV locally...')
-    pd.DataFrame.to_csv(df_predictions, pred_filename, index=False)
-
-    # --- Import predictions csv into Anaplan ---
-    # Note: To upload a file using the API, that file must already exist in Anaplan. If the file has not been
-    # previously uploaded, you must upload it initially using the Anaplan user interface.
-    # You can then carry out subsequent uploads of that file using the API.
-    # Reference: https://anaplan.docs.apiary.io/#reference/upload-files
-
-    # Notes on files uploaded/exported via API:
-    # Private files are created when you use the Anaplan API to:
-    # - Upload a file
-    # - Run the export action
-    #
-    # Private files have these characteristics:
-    # - A private import file can only be accessed by the user who originally uploaded the source file to the model.
-    # - A private import file can only be accessed by the user who originally ran the export.
-    # - Private files are stored in models and removed if not accessed at least once in 48 hours. If your private file no longer exists for a file Import Data Source or file Export Action, the default file is used instead.
+        print('Saving predictions DF as a CSV locally...')
+    pred_filepath = os.path.join(tmp_path, pred_filename)
+    pd.DataFrame.to_csv(df_predictions, pred_filepath, index=False)
 
     # TODO: Currently assuming the data to upload/import fits within 1 chunk (<10 MB)
-    data_file = open(pred_filename, 'r').read().encode('utf-8')
+    pred_file_size = os.path.getsize(pred_filepath) / 1000000.
+    print("Predictions file is:", pred_file_size, "MB")
+    if pred_file_size < 10:
+        print("Small enough for 1 chunk of data.")
+    data_file = open(pred_filepath, 'r').read().encode('utf-8')
 
     # --- Initiate the upload ---
     if verbose:
-        print('Uploading predictions df to Anaplan...')
+        print('Uploading predictions DF to Anaplan...')
     pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, predictions_file_id, data_file, token_auth_user)
-    print(pred_file_upload_response)
+    # print(pred_file_upload_response)
 
     # --- Execute the import ---
     if verbose:
-        print('Importing uploaded predictions df to Anaplan...')
+        print('Importing uploaded predictions DF to Anaplan...')
     post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, predictions_import_id, token_auth_user)
-    print(post_import_file_response)
-    print(post_import_file_data)
+    # print(post_import_file_response)
+    # print(post_import_file_data)
 
     # Once import is complete, delete the .\temp directory
 
     # TODO: Check whether the import action was successful, how many rows uploaded/ignored, failure dump, etc
 
+    # TODO: Function-ize this
     model_run_timestamp = datetime.datetime.now().strftime('%m/%d/%Y')
     model_run_df = pd.DataFrame([model_run_timestamp], columns=['date'])
     model_run_filename = "date_model_ran.csv"
-    pd.DataFrame.to_csv(model_run_df, model_run_filename, index=False)
+    model_run_filepath = os.path.join(tmp_path, model_run_filename)
+    pd.DataFrame.to_csv(model_run_df, model_run_filepath, index=False)
 
-    model_timestamp_data_file = open(model_run_filename, 'r').read().encode('utf-8')
+    model_run_file_size = os.path.getsize(model_run_filepath) / 1000000.
+    print("Timestamp file is:", model_run_file_size, "MB")
+    if model_run_file_size < 10:
+        print("Small enough for 1 chunk of data.")
+    model_timestamp_data_file = open(model_run_filepath, 'r').read().encode('utf-8')
 
-    model_run_timestamp_file_id = san_diego_demo_creds['san-diego-demo']['model_run_timestamp_file_id']
-    model_run_timestamp_import_id = san_diego_demo_creds['san-diego-demo']['model_run_timestamp_import_id']
+    model_run_timestamp_file_id = creds['san-diego-demo']['model_run_timestamp_file_id']
+    model_run_timestamp_import_id = creds['san-diego-demo']['model_run_timestamp_import_id']
 
     # --- Initiate the upload ---
     if verbose:
         print('Uploading model timestamp to Anaplan...')
     model_timestamp_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, model_run_timestamp_file_id, model_timestamp_data_file, token_auth_user)
-    print(model_timestamp_file_upload_response)
+    if verbose:  # TODO: Replicate this verbosity elsewhere; should this be a separate level of (greater) verbosity?
+        print("Timestamp upload (PUT) response:", model_timestamp_file_upload_response)
 
     # --- Execute the import ---
     if verbose:
-        print('Importing uploaded model timestamp to Anaplan...')
+        print("Importing uploaded model timestamp to Anaplan...")
     model_timestamp_post_import_file_response, model_timestamp_post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, model_run_timestamp_import_id, token_auth_user)
-    print(model_timestamp_post_import_file_response)
-    print(model_timestamp_post_import_file_data)
+    if verbose:
+        print("Timestamp import (POST) response:", model_timestamp_post_import_file_response)
+        # print("Data:\n", model_timestamp_post_import_file_data)
+
+    return df_historical, df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response
 
 
-if __name__ == "__main__":
-    # TODO: Use argparse to enable args from CLI?
-    main(sim_data=False, verbose=True, dry_run=False)
+# if __name__ == "__main__":
+#     # TODO: Use argparse library to enable args from CLI?
+#     main(sim_data=False, verbose=True, dry_run=False)

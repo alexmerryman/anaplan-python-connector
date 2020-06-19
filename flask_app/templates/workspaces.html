@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h3>Available workspaces (select one):</h3>
+    {% for w in avail_workspaces %}
+    <ul>
+        <li>{{ w.name }} ({{ w.id }})</li>
+    </ul>
+    {% endfor %}
+{% endblock %}

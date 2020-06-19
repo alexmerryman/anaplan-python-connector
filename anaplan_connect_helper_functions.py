@@ -150,6 +150,23 @@ def get_model_imports(wGuid, mGuid, user):
         return None, None  # TODO
 
 
+# --- Import predictions CSV into Anaplan ---
+# Note: To upload a file using the API, that file must already exist in Anaplan. If the file has not been
+# previously uploaded, you must upload it initially using the Anaplan user interface.
+# You can then carry out subsequent uploads of that file using the API.
+# Reference: https://anaplan.docs.apiary.io/#reference/upload-files # TODO: Update this link to Anaplan API v2.0
+
+# Notes on files uploaded/exported via API:
+# Private files are created when you use the Anaplan API to:
+# - Upload a file
+# - Run the export action
+#
+# Private files have these characteristics:
+# - A private import file can only be accessed by the user who originally uploaded the source file to the model.
+# - A private import file can only be accessed by the user who originally ran the export.
+# - Private files are stored in models and removed if not accessed at least once in 48 hours. If your private file no longer exists for a file Import Data Source or file Export Action, the default file is used instead.
+
+
 def put_upload_file(wGuid, mGuid, file_id, data_file, user):
     """
     Sets up the upload action in Anaplan -- does not actually execute it.
