@@ -31,9 +31,9 @@ def generate_token():
 
 @app.route("/user_trigger_status")
 def user_trigger_status():
-    token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable = full_run.full_token_credentialing()
+    TokenObj = full_run.full_token_credentialing()
     creds = full_run.load_creds()
-    user_trigger_status, user_trigger_status_message = full_run.anaplan_get_user_trigger_status(auth_token=token_auth_user, creds=creds)
+    user_trigger_status, user_trigger_status_message = full_run.anaplan_get_user_trigger_status(TokenObj, creds=creds)
     user_trigger_status = str(user_trigger_status).upper()
     return render_template('user_trigger_status.html', user_trigger_status=user_trigger_status, user_trigger_status_message=user_trigger_status_message)
 
