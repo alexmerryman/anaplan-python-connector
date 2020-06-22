@@ -4,6 +4,7 @@ import requests
 import numpy as np
 import pandas as pd
 import datetime
+import time
 import anaplan_connect_helper_functions
 import model_covid
 import flask_app_helper_functions
@@ -34,9 +35,9 @@ def load_creds():
     if not os.path.isfile(cred_path):
         print('ERROR: No file called `creds.json` found in the path.')
         return None
-
-    creds = json.load(open(cred_path,))
-    return creds
+    else:
+        creds = json.load(open(cred_path,))
+        return creds
 
 
 # TODO: More robust credentialing, including refreshing the API token instead of re-generating it:
@@ -62,23 +63,103 @@ def load_creds():
 #         pickle.dump(creds, token)
 
 
-def generate_auth_token(creds, verbose=False):
+# Reference: https://anaplanauthentication.docs.apiary.io/#reference
+def generate_auth_token(verbose=False):
+    creds = load_creds()
     email = creds['username']
     pwd = creds['password']
+
     if verbose:
         print("Generating Anaplan API authorization token...")
     token_generated = anaplan_connect_helper_functions.anaplan_create_token(email, pwd)
     token_auth_user = anaplan_connect_helper_functions.generate_token_auth_user(email, pwd, token=token_generated)
-    # TODO: Save to json w/ expiration time, to know when to refresh
+
     return token_generated, token_auth_user
 
 
-san_diego_demo_creds = load_creds()
-token_auth_user = generate_auth_token(san_diego_demo_creds)
-flask_app_helper_functions.anaplan_get_user_trigger_status(token_auth_user, san_diego_demo_creds, verbose=False)
+def write_token_file(token_generated, token_auth_user, verbose=False):
+    if verbose:
+        print("Saving token locally...")
+    with open("token.json", "wb") as token_outfile:
+        print(token_generated.content)
+        token_outfile.write(token_generated.content)
 
-workspace_id = san_diego_demo_creds['san-diego-demo']['workspace_id']
-model_id = san_diego_demo_creds['san-diego-demo']['model_id']
+    if verbose:
+        print("Saving token auth user locally...")
+    with open("token_auth_user.txt", "w") as token_auth_user_outfile:
+        token_auth_user_outfile.write(token_auth_user)
+        # json.dump(token_auth_user, token_auth_user_outfile)
+
+
+def read_token_file(verbose=False):
+    if verbose:
+        print("Attempting to read token from saved file...")
+
+    token_path = "token.json"
+    if not os.path.isfile(token_path):
+        print(f"ERROR: No file called `{token_path}` found in the path.")
+        token_generated = None
+    else:
+        with open(token_path) as token_json:
+            token_generated = json.load(token_json)
+
+    token_auth_user_path = "token_auth_user.txt"
+    if not os.path.isfile(token_auth_user_path):
+        print(f"ERROR: No file called `{token_auth_user_path}` found in the path.")
+        token_auth_user = None
+    else:
+        with open(token_auth_user_path) as token_auth_user_txt:
+            token_auth_user = token_auth_user_txt.read()
+
+    return token_generated, token_auth_user
+
+
+def full_token_credentialing(epoch_buffer=3600, verbose=False):
+    try:
+        token_generated, token_auth_user = read_token_file(verbose=True)
+        # print("loaded token:", token_generated)
+        # print(type(token_generated))
+    except Exception as e:
+        print(f"Unable to load token_generated, token_auth_user from local file (exception {e}); generating new ones...")
+        token_generated, token_auth_user = generate_auth_token(verbose=verbose)
+        if verbose:
+            print("Writing token and auth user to local files (token.json, token_auth_user.txt)...")
+        write_token_file(token_generated, token_auth_user, verbose=verbose)
+
+    if (not token_generated) or (not token_auth_user):
+        if verbose:
+            print("token_generated or token_auth_user are None")
+        token_generated, token_auth_user = generate_auth_token(verbose=verbose)
+
+        if verbose:
+            print("Writing token and auth user to local files (token.json, token_auth_user.txt)...")
+        write_token_file(token_generated, token_auth_user, verbose=verbose)
+        token_generated = token_generated.json()
+
+    token_remaining_time = token_generated['tokenInfo']['expiresAt'] - int(time.time())
+
+    if verbose:
+        print(f"Token expires at: {token_generated['tokenInfo']['expiresAt']} (epoch time).")
+        print(f"It is currently: {int(time.time())} (epoch time).")
+        print(f"Token expires in {token_remaining_time} seconds.")
+    if token_remaining_time <= epoch_buffer:
+        if verbose:
+            print(f"Token will expire soon -- generating a new token...")
+        token_generated, token_auth_user = generate_auth_token(verbose=verbose)
+        token_generated = token_generated.json()
+    else:
+        if verbose:
+            print(f"You should have plenty of time to use this token ({token_remaining_time} seconds).")
+
+    return token_generated, token_auth_user, token_remaining_time
+
+
+# san_diego_demo_creds = load_creds()
+# token_auth_user = generate_auth_token(san_diego_demo_creds)
+# flask_app_helper_functions.anaplan_get_user_trigger_status(token_auth_user, san_diego_demo_creds, verbose=False)
+#
+# workspace_id = san_diego_demo_creds['san-diego-demo']['workspace_id']
+# model_id = san_diego_demo_creds['san-diego-demo']['model_id']
 
 
 def anaplan_get_export_params(auth_token, creds, verbose=False):
@@ -272,9 +353,9 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     predictions_file_id = creds['san-diego-demo']['predictions_file_id']
     predictions_import_id = creds['san-diego-demo']['predictions_import_id']
 
-    token_generated, token_auth_user = generate_auth_token(creds)
+    token_generated, token_auth_user, token_remaining_time = full_token_credentialing()
 
-    if flask_app_helper_functions.anaplan_get_user_trigger_status(token_auth_user, creds):
+    if flask_app_helper_functions.anaplan_get_user_trigger_status(token_auth_user, creds, verbose=verbose):
         # TODO
         pass
 

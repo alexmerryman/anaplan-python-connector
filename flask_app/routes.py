@@ -9,6 +9,7 @@ import flask_app_helper_functions
 @app.route('/index')
 def index():
     user = {'username': 'Alex'}
+    # TODO: Generate auth token
     return render_template('index.html', title='Anaplan-Python Connector Flask App', user=user)
 
 
@@ -16,6 +17,18 @@ def index():
 def test_main():
     data = test_main.main()
     return render_template('test_main.html', data=data)
+
+
+@app.route("/generate_token")
+def generate_token():
+    token_generated, token_auth_user, token_remaining_time = full_run.full_token_credentialing()
+    return render_template('auth_token.html', token_generated=token_generated, token_auth_user=token_auth_user, token_remaining_time=token_remaining_time)
+
+
+# @app.route("/user_trigger_status")
+# def user_trigger_status():
+#     user_trigger_status_bool = flask_app_helper_functions.anaplan_get_user_trigger_status(auth_token=, creds=)
+#     return render_template('user_trigger_status.html', user_trigger_status_bool=user_trigger_status_bool)
 
 
 @app.route("/workspaces/")  # TODO: Why doesn't route "/workspaces" work?
