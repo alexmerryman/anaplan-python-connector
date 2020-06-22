@@ -9,6 +9,7 @@ import flask_app_helper_functions
 @app.route('/index')
 def index():
     user = {'username': 'Alex'}
+    # TODO: Generate auth token
     return render_template('index.html', title='Anaplan-Python Connector Flask App', user=user)
 
 
@@ -18,9 +19,29 @@ def test_main():
     return render_template('test_main.html', data=data)
 
 
+@app.route("/generate_token")
+def generate_token():
+    token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable = full_run.full_token_credentialing()
+    return render_template('auth_token.html',
+                           token_generated=token_generated,
+                           token_auth_user=token_auth_user,
+                           token_remaining_time_seconds=token_remaining_time_seconds,
+                           token_expire_time_human_readable=token_expire_time_human_readable)
+
+
+@app.route("/user_trigger_status")
+def user_trigger_status():
+    token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable = full_run.full_token_credentialing()
+    creds = full_run.load_creds()
+    user_trigger_status, user_trigger_status_message = full_run.anaplan_get_user_trigger_status(auth_token=token_auth_user, creds=creds)
+    user_trigger_status = str(user_trigger_status).upper()
+    return render_template('user_trigger_status.html', user_trigger_status=user_trigger_status, user_trigger_status_message=user_trigger_status_message)
+
+
 @app.route("/workspaces/")  # TODO: Why doesn't route "/workspaces" work?
 def workspaces():
-    avail_workspaces = flask_app_helper_functions.anaplan_list_workspaces()
+    token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable = full_run.full_token_credentialing()
+    avail_workspaces = flask_app_helper_functions.anaplan_list_workspaces(token_auth_user)
     return render_template('workspaces.html', avail_workspaces=avail_workspaces)
 
 

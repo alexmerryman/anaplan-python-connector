@@ -76,8 +76,8 @@ def get_workspaces(user):
     try:
         workspaces_response = requests.get('https://api.anaplan.com/2/0/workspaces',
                                            headers=getHeaders)
-        print(workspaces_response.headers)
-        print(workspaces_response.url)
+        # print(workspaces_response.headers)
+        # print(workspaces_response.url)
         # print(workspaces_response.status_code)
         workspaces_json = json.loads(workspaces_response.text)
     except Exception as e:

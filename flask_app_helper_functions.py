@@ -7,7 +7,6 @@ def anaplan_list_workspaces(auth_token):
     # for i in workspaces_json['workspaces']:
     #     workspaces_dict[i['name']] = i['id']
     return workspaces_json['workspaces']
-    # pass
 
 
 def anaplan_list_models(workspace_id, auth_token):
@@ -36,7 +35,8 @@ def anaplan_get_user_trigger_status(auth_token, creds, verbose=False):
     if verbose:
         print('------------------- GETTING PARAMS FILE INFO (CHUNK METADATA) -------------------')
     chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid,
-                                                                                                       user_trigger_export_id, auth_token)
+                                                                                                       user_trigger_export_id,
+                                                                                                       auth_token)
     if verbose:
         print(chunk_metadata_json)
 
@@ -55,7 +55,7 @@ def anaplan_get_user_trigger_status(auth_token, creds, verbose=False):
     # print(chunk_data_parsed)
     # print(chunk_data_parsed[1][1])
 
-    user_trigger_status = chunk_data_parsed[1][1]
+    user_trigger_status = chunk_data_parsed[1][1] == 'true'
     print("user_trigger_status == 'true'?\t", user_trigger_status == 'true')
 
     return user_trigger_status
