@@ -5,9 +5,9 @@
     <div>
         <p>Token Info:</p>
             <ul>
-                <li><p>Status: {{ token_generated.status }} ({{ token_generated.statusMessage }})</p></li>
-                <li><p>Token expires at: {{ token_expire_time_human_readable }}</p></li>
+                <li><p>Status: {{ creation_status }} ({{ creation_status_message }})</p></li>
+                <li><p>Token expires at: <b>{{ expiry_time_human_readable }}</b></p></li>
             </ul>
     </div>
-    <div><p>Remaining time to use this token: {{ token_remaining_time_seconds }} seconds.</p></div>
+    <div><p>Remaining time to use this token: {{ remaining_time_seconds }} seconds.</p></div>
 {% endblock %}

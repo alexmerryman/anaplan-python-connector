@@ -63,6 +63,33 @@ def load_creds():
 #         pickle.dump(creds, token)
 
 
+class AnaplanUserAuthToken:
+    def __init__(self, token_json_obj, expiry_buffer=180):
+        self.creation_status = token_json_obj['status']
+        self.creation_status_message = token_json_obj['statusMessage']
+        self.expiry_millisec = token_json_obj['tokenInfo']['expiresAt']
+        self.id = token_json_obj['tokenInfo']['tokenId']
+        self.token_value = token_json_obj['tokenInfo']['tokenValue']
+        self.refresh_id = token_json_obj['tokenInfo']['refreshTokenId']
+        self.expiry_buffer = expiry_buffer
+        self.auth_token_string = ""
+
+    # Anaplan API ['tokenInfo']['expiresAt'] is returned in milliseconds elapsed since epoch time -- divide by 1000 to get seconds
+    # https://www.epochconverter.com/
+
+    def expiry_sec(self):
+        return self.expiry_millisec/1000.
+
+    def remaining_sec(self):
+        return self.expiry_sec() - int(time.time())
+
+    def expiry_formatted(self):
+        return datetime.datetime.fromtimestamp(self.expiry_sec()).strftime('%I:%M:%S %p, %m/%d/%Y')
+
+    def expired_status(self):
+        return self.remaining_sec() < self.expiry_buffer
+
+
 # Reference: https://anaplanauthentication.docs.apiary.io/#reference
 def generate_auth_token(verbose=False):
     creds = load_creds()
@@ -116,11 +143,10 @@ def read_token_file(verbose=False):
     return token_generated, token_auth_user
 
 
-def full_token_credentialing(buffer_seconds=600, verbose=False):
+def full_token_credentialing(expiry_buffer=180, verbose=False):
+    # TODO: When running for the first time in a while, it will get the stored credentials and assume they are valid -- don't do this; automatically check expiry and generate new one
     try:
         token_generated, token_auth_user = read_token_file(verbose=verbose)
-        # print("loaded token:", token_generated)
-        # print(type(token_generated))
     except Exception as e:
         print(f"Unable to load token_generated, token_auth_user from local file (exception {e}); generating new ones...")
         token_generated, token_auth_user = generate_auth_token(verbose=verbose)
@@ -130,7 +156,7 @@ def full_token_credentialing(buffer_seconds=600, verbose=False):
 
     if (not token_generated) or (not token_auth_user):
         if verbose:
-            print("token_generated or token_auth_user are None")
+            print("Either token_generated or token_auth_user are None -- generating new token & auth user...")
         token_generated, token_auth_user = generate_auth_token(verbose=verbose)
 
         if verbose:
@@ -138,52 +164,50 @@ def full_token_credentialing(buffer_seconds=600, verbose=False):
         write_token_file(token_generated, token_auth_user, verbose=verbose)
         token_generated = token_generated.json()
 
-    # Anaplan API ['tokenInfo']['expiresAt'] is returned in milliseconds elapsed since epoch time -- divide by 1000 to get seconds
-    # https://www.epochconverter.com/
-    token_expire_epoch_seconds = token_generated['tokenInfo']['expiresAt']/1000.
-    token_remaining_time_seconds = token_expire_epoch_seconds - int(time.time())
-    token_expire_time_human_readable = datetime.datetime.fromtimestamp(token_expire_epoch_seconds).strftime('%m/%d/%Y %H:%M:%S')  # TODO: Use 12-hour clock instead of 24hr
-    
-    if verbose:
-        print(f"Token expires at: {token_expire_epoch_seconds} (epoch time).")
-        print(f"It is currently: {int(time.time())} (epoch time).")
-        print(f"Token expires in {token_remaining_time_seconds} seconds.")
+    TokenObj = AnaplanUserAuthToken(token_generated, expiry_buffer=expiry_buffer)
+    TokenObj.auth_token_string = token_auth_user
 
-    if token_remaining_time_seconds <= buffer_seconds:
+    if verbose:
+        print(f"Token expires at: {TokenObj.expiry_formatted()} ({TokenObj.expiry_sec()} epoch time).")
+        print(f"It is currently: {int(time.time())} (epoch time).")
+        print(f"Token expires in {TokenObj.remaining_sec()} seconds.")
+
+    if TokenObj.expired_status() is True:
         if verbose:
-            print(f"Token will expire soon -- generating a new token...")
+            print(f"Token has expired, or will expire soon. Generating a new token...")
         token_generated, token_auth_user = generate_auth_token(verbose=verbose)
         write_token_file(token_generated, token_auth_user, verbose=verbose)
         token_generated = token_generated.json()
+        TokenObj = AnaplanUserAuthToken(token_generated, expiry_buffer=expiry_buffer)
     else:
         if verbose:
-            print(f"You have {token_remaining_time_seconds/60.} min) to use this token.")
+            print(f"You have {TokenObj.remaining_sec()/60.} min to use this token.")
 
-    return token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable
+    return TokenObj
 
 
-def anaplan_get_user_trigger_status(auth_token, creds, verbose=False):
+def anaplan_get_user_trigger_status(TokenObj, creds, verbose=False):
     wGuid = creds['san-diego-demo']['workspace_id']
     mGuid = creds['san-diego-demo']['model_id']
     user_trigger_export_id = creds['san-diego-demo']['user_trigger_export_id']
 
     if verbose:
-        print('------------------- GETTING PARAMS FILE INFO (CHUNK METADATA) -------------------')
+        print('Getting user trigger status chunk metadata...')
     chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid,
                                                                                                        user_trigger_export_id,
-                                                                                                       auth_token)
+                                                                                                       TokenObj.auth_token_string)
     if verbose:
         print(chunk_metadata_json)
 
     if verbose:
-        print('------------------- GETTING PARAMS CHUNK DATA -------------------')
+        print('Getting user trigger status chunk data...')
         print('Total number of chunks: {}'.format(len(chunk_metadata_json['chunks'])))
 
     # if len(chunk_metadata_json['chunks']) == 1:
     chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid,
                                                                                            user_trigger_export_id,
                                                                                            chunk_metadata_json['chunks'][0]['id'],
-                                                                                           auth_token)
+                                                                                           TokenObj.auth_token_string)
     chunk_data_parsed = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
 
     # print(chunk_data_text)
@@ -202,7 +226,15 @@ def anaplan_get_user_trigger_status(auth_token, creds, verbose=False):
     # TODO: Reset the state of the trigger to False
 
 
-def anaplan_get_export_params(auth_token, creds, verbose=False):
+def anaplan_reset_user_trigger_status(TokenObj, creds, verbose=False):
+    wGuid = creds['san-diego-demo']['workspace_id']
+    mGuid = creds['san-diego-demo']['model_id']
+    user_trigger_export_id = creds['san-diego-demo']['user_trigger_export_id']
+
+    # TODO: This requires PUT & POST actions?
+
+
+def anaplan_get_export_params(TokenObj, creds, verbose=False):
     wGuid = creds['san-diego-demo']['workspace_id']  # TODO: Get this from user input via list_workspaces
     mGuid = creds['san-diego-demo']['model_id']  # TODO: Get this from user input via list_models
     param_export_id = creds['san-diego-demo']['params_export_id']   # TODO: Get this from user input via list_exports
@@ -211,7 +243,7 @@ def anaplan_get_export_params(auth_token, creds, verbose=False):
         print('------------------- GETTING PARAMS EXPORT DATA -------------------')
     # ref: https://community.anaplan.com/t5/Best-Practices/RESTful-API-Best-Practices/ta-p/33579 (https://vimeo.com/318242332)
     anaplan_param_export_response, anaplan_param_export_data_json = anaplan_connect_helper_functions.get_export_data(
-        wGuid, mGuid, param_export_id, auth_token)
+        wGuid, mGuid, param_export_id, TokenObj.auth_token_string)
     # if verbose:
     #     print(anaplan_param_export_data_json['exportMetadata']['headerNames'])
     #     print(anaplan_param_export_data_json['exportMetadata']['dataTypes'])
@@ -221,13 +253,13 @@ def anaplan_get_export_params(auth_token, creds, verbose=False):
 
     if verbose:
         print('------------------- CREATING PARAMS (POST) EXPORT TASK -------------------')
-    anaplan_param_export_task_response, anaplan_param_export_task_json = anaplan_connect_helper_functions.post_export_task(wGuid, mGuid, param_export_id, auth_token)
+    anaplan_param_export_task_response, anaplan_param_export_task_json = anaplan_connect_helper_functions.post_export_task(wGuid, mGuid, param_export_id, TokenObj.auth_token_string)
 
 
     # Then, get all chunks
     if verbose:
         print('------------------- GETTING PARAMS FILE INFO (CHUNK METADATA) -------------------')
-    chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid, param_export_id, auth_token)
+    chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid, param_export_id, TokenObj.auth_token_string)
     if verbose:
         print(chunk_metadata_json)
 
@@ -238,7 +270,7 @@ def anaplan_get_export_params(auth_token, creds, verbose=False):
     if len(chunk_metadata_json['chunks']) == 1:
         chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid,
                                                                                                param_export_id, chunk_metadata_json['chunks'][0]['id'],
-                                                                                               auth_token)
+                                                                                               TokenObj.auth_token_string)
         chunk_data_parsed = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
 
         return chunk_data_parsed
@@ -248,7 +280,7 @@ def anaplan_get_export_params(auth_token, creds, verbose=False):
         for c in chunk_metadata_json['chunks']:
             # if verbose:
             #     print('Chunk name, ID:', c['name'], ',', c['id'])
-            chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid, param_export_id, c['id'], auth_token)
+            chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid, param_export_id, c['id'], TokenObj.auth_token_string)
             # print(chunk_data.url)
             # print(chunk_data.status_code)
             # print(chunk_data_text)
@@ -260,7 +292,7 @@ def anaplan_get_export_params(auth_token, creds, verbose=False):
         return all_param_chunk_data
 
 
-def anaplan_get_export_historical_df(auth_token, creds, verbose=False):
+def anaplan_get_export_historical_df(TokenObj, creds, verbose=False):
     wGuid = creds['san-diego-demo']['workspace_id']
     mGuid = creds['san-diego-demo']['model_id']
     df_export_id = creds['san-diego-demo']['df_export_id']
@@ -269,16 +301,16 @@ def anaplan_get_export_historical_df(auth_token, creds, verbose=False):
         print('------------------- GETTING HISTORICAL DF EXPORT DATA -------------------')
     # ref: https://community.anaplan.com/t5/Best-Practices/RESTful-API-Best-Practices/ta-p/33579 (https://vimeo.com/318242332)
     anaplan_historical_df_export_response, anaplan_historical_df_export_data_json = anaplan_connect_helper_functions.get_export_data(
-        wGuid, mGuid, df_export_id, auth_token)
+        wGuid, mGuid, df_export_id, TokenObj.auth_token_string)
 
     if verbose:
         print('------------------- CREATING HISTORICAL DF (POST) EXPORT TASK -------------------')
-    anaplan_historical_df_export_task_response, anaplan_historical_df_export_task_json = anaplan_connect_helper_functions.post_export_task(wGuid, mGuid, df_export_id, auth_token)
+    anaplan_historical_df_export_task_response, anaplan_historical_df_export_task_json = anaplan_connect_helper_functions.post_export_task(wGuid, mGuid, df_export_id, TokenObj.auth_token_string)
 
     # Then, get all chunks
     if verbose:
         print('------------------- GETTING HISTORICAL DF FILE INFO (CHUNK METADATA) -------------------')
-    chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid, df_export_id, auth_token)
+    chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid, df_export_id, TokenObj.auth_token_string)
     if verbose:
         print(chunk_metadata_json)
 
@@ -290,7 +322,7 @@ def anaplan_get_export_historical_df(auth_token, creds, verbose=False):
         chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid,
                                                                                                df_export_id,
                                                                                                chunk_metadata_json['chunks'][0]['id'],
-                                                                                               auth_token)
+                                                                                               TokenObj.auth_token_string)
         chunk_data_parsed = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
         historical_df = pd.DataFrame(chunk_data_parsed[1:], columns=chunk_data_parsed[0])
 
@@ -301,7 +333,7 @@ def anaplan_get_export_historical_df(auth_token, creds, verbose=False):
         for c in chunk_metadata_json['chunks']:
             if verbose:
                 print('Chunk name, ID:', c['name'], ',', c['id'])
-            chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid, df_export_id, c['id'], auth_token)
+            chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid, df_export_id, c['id'], TokenObj.auth_token_string)
             # print(chunk_data.url)
             # print(chunk_data.status_code)
             # print(chunk_data_text)
@@ -375,7 +407,7 @@ def full_run_realdata(num_time_predict=30, dry_run=True, verbose=False):
     predictions_file_id = creds['san-diego-demo']['predictions_file_id']
     predictions_import_id = creds['san-diego-demo']['predictions_import_id']
 
-    token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable = full_token_credentialing()
+    TokenObj = full_token_credentialing()
 
     # TODO
 
@@ -412,7 +444,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     predictions_file_id = creds['san-diego-demo']['predictions_file_id']
     predictions_import_id = creds['san-diego-demo']['predictions_import_id']
 
-    token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable = full_token_credentialing()
+    TokenObj = full_token_credentialing()
 
     if dry_run:
         sim_data = True
@@ -434,12 +466,12 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
         if verbose:
             print('Getting params from Anaplan...')
 
-        params_chunks_unparsed = anaplan_get_export_params(token_auth_user, creds, verbose=verbose)
+        params_chunks_unparsed = anaplan_get_export_params(TokenObj.auth_token_string, creds, verbose=verbose)
         params = parse_params_chunk_data(params_chunks_unparsed)
 
         if verbose:
             print('Getting historical df from Anaplan...')
-        df_historical = anaplan_get_export_historical_df(token_auth_user, creds, verbose=verbose)
+        df_historical = anaplan_get_export_historical_df(TokenObj.auth_token_string, creds, verbose=verbose)
 
         # TODO: Function-ize this?
         df_historical['time_obs'] = df_historical['time_obs'].astype(int)
@@ -506,7 +538,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     df_predictions['death_rate'] = np.exp(df_predictions['prediction_ln_death_rate'])
 
     # TODO: Add `group` ('all'), `intercept` (1.0) columns to df_predictions -- first change format in Anaplan to ensure compatibility on upload/import?
-    # # Keep only the actual death rate column
+    # # Keep only the actual death rate column (not `prediction_ln_death_rate`)
     # df_predictions = df_predictions[['time_pred', 'death_rate']]
 
     # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
@@ -543,13 +575,13 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # --- Initiate the upload ---
     if verbose:
         print('Uploading predictions DF to Anaplan...')
-    pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, predictions_file_id, data_file, token_auth_user)
+    pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, predictions_file_id, data_file, TokenObj.auth_token_string)
     # print(pred_file_upload_response)
 
     # --- Execute the import ---
     if verbose:
         print('Importing uploaded predictions DF to Anaplan...')
-    post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, predictions_import_id, token_auth_user)
+    post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, predictions_import_id, TokenObj.auth_token_string)
     # print(post_import_file_response)
     # print(post_import_file_data)
 
@@ -576,14 +608,14 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # --- Initiate the upload ---
     if verbose:
         print('Uploading model timestamp to Anaplan...')
-    model_timestamp_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, model_run_timestamp_file_id, model_timestamp_data_file, token_auth_user)
+    model_timestamp_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, model_run_timestamp_file_id, model_timestamp_data_file, TokenObj.auth_token_string)
     if verbose:  # TODO: Replicate this verbosity elsewhere; should this be a separate level of (greater) verbosity?
         print("Timestamp upload (PUT) response:", model_timestamp_file_upload_response)
 
     # --- Execute the import ---
     if verbose:
         print("Importing uploaded model timestamp to Anaplan...")
-    model_timestamp_post_import_file_response, model_timestamp_post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, model_run_timestamp_import_id, token_auth_user)
+    model_timestamp_post_import_file_response, model_timestamp_post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, model_run_timestamp_import_id, TokenObj.auth_token_string)
     if verbose:
         print("Timestamp import (POST) response:", model_timestamp_post_import_file_response)
         # print("Data:\n", model_timestamp_post_import_file_data)
