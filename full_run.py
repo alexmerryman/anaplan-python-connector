@@ -139,10 +139,11 @@ def full_token_credentialing(buffer_seconds=600, verbose=False):
         token_generated = token_generated.json()
 
     # Anaplan API ['tokenInfo']['expiresAt'] is returned in milliseconds elapsed since epoch time -- divide by 1000 to get seconds
+    # https://www.epochconverter.com/
     token_expire_epoch_seconds = token_generated['tokenInfo']['expiresAt']/1000.
     token_remaining_time_seconds = token_expire_epoch_seconds - int(time.time())
-    token_expire_time_human_readable = datetime.datetime.fromtimestamp(token_expire_epoch_seconds).strftime('%m/%d/%Y %H:%M:%S')
-
+    token_expire_time_human_readable = datetime.datetime.fromtimestamp(token_expire_epoch_seconds).strftime('%m/%d/%Y %H:%M:%S')  # TODO: Use 12-hour clock instead of 24hr
+    
     if verbose:
         print(f"Token expires at: {token_expire_epoch_seconds} (epoch time).")
         print(f"It is currently: {int(time.time())} (epoch time).")
