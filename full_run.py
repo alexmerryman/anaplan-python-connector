@@ -223,7 +223,6 @@ def anaplan_get_user_trigger_status(TokenObj, creds, verbose=False):
         user_trigger_status_message = "No Anaplan user action detected to execute the full run."
 
     return user_trigger_status, user_trigger_status_message
-    # TODO: Reset the state of the trigger to False
 
 
 def anaplan_reset_user_trigger_status(TokenObj, creds, verbose=False):
