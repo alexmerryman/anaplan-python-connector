@@ -21,12 +21,12 @@ def test_main():
 
 @app.route("/generate_token")
 def generate_token():
-    token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable = full_run.full_token_credentialing()
+    TokenObj = full_run.full_token_credentialing()
     return render_template('auth_token.html',
-                           token_generated=token_generated,
-                           token_auth_user=token_auth_user,
-                           token_remaining_time_seconds=token_remaining_time_seconds,
-                           token_expire_time_human_readable=token_expire_time_human_readable)
+                           creation_status=TokenObj.creation_status,
+                           creation_status_message=TokenObj.creation_status_message,
+                           remaining_time_seconds=round(TokenObj.remaining_sec()),
+                           expiry_time_human_readable=TokenObj.expiry_formatted())
 
 
 @app.route("/user_trigger_status")
