@@ -78,6 +78,7 @@ def generate_auth_token(verbose=False):
 
 
 def write_token_file(token_generated, token_auth_user, verbose=False):
+    # TODO: Write to subdirectory, instead of main directory?
     if verbose:
         print("Saving token locally...")
     with open("token.json", "wb") as token_outfile:
@@ -361,9 +362,22 @@ def simulate_data():
     return sim_data_dict
 
 
-def full_run_realdata(num_time_predict=30, dry_run=True):
+def full_run_realdata(num_time_predict=30, dry_run=True, verbose=False):
+    if verbose:
+        print('Loading Anaplan credential from creds.json')
+    creds = load_creds()
+    email = creds['username']
+    pwd = creds['password']
+
+    wGuid = creds['san-diego-demo']['workspace_id']
+    mGuid = creds['san-diego-demo']['model_id']
+    predictions_file_id = creds['san-diego-demo']['predictions_file_id']
+    predictions_import_id = creds['san-diego-demo']['predictions_import_id']
+
+    token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable = full_token_credentialing()
+
     # TODO
-    pass
+
 
 
 # TODO: Split this into 2 functions: full_run_simdata, full_run_realdata?
@@ -397,11 +411,7 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     predictions_file_id = creds['san-diego-demo']['predictions_file_id']
     predictions_import_id = creds['san-diego-demo']['predictions_import_id']
 
-    token_generated, token_auth_user, token_remaining_time = full_token_credentialing()
-
-    if flask_app_helper_functions.anaplan_get_user_trigger_status(token_auth_user, creds, verbose=verbose):
-        # TODO
-        pass
+    token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable = full_token_credentialing()
 
     if dry_run:
         sim_data = True
