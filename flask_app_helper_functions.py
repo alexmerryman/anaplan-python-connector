@@ -7,7 +7,6 @@ def anaplan_list_workspaces(auth_token):
     # for i in workspaces_json['workspaces']:
     #     workspaces_dict[i['name']] = i['id']
     return workspaces_json['workspaces']
-    # pass
 
 
 def anaplan_list_models(workspace_id, auth_token):

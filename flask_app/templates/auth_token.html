@@ -1,8 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h3>Anaplan API User Authorization Token:</h3>
-    <div><p>token_generated: {{ token_generated }}</p></div>
-    <div><p>token_auth_user: {{ token_auth_user }}</p></div>
-    <div><p>Remaining time to use this token: {{ token_remaining_time }} seconds.</p></div>
+    <h3>Anaplan API User Authorization Token</h3>
+    <div>
+        <p>Token Info:</p>
+            <ul>
+                <li><p>Status: {{ token_generated.status }} ({{ token_generated.statusMessage }})</p></li>
+                <li><p>Token expires at: {{ token_expire_time_human_readable }}</p></li>
+            </ul>
+    </div>
+    <div><p>Remaining time to use this token: {{ token_remaining_time_seconds }} seconds.</p></div>
 {% endblock %}

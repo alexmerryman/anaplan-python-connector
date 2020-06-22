@@ -81,14 +81,13 @@ def write_token_file(token_generated, token_auth_user, verbose=False):
     if verbose:
         print("Saving token locally...")
     with open("token.json", "wb") as token_outfile:
-        print(token_generated.content)
+        # print(token_generated.content)
         token_outfile.write(token_generated.content)
 
     if verbose:
         print("Saving token auth user locally...")
     with open("token_auth_user.txt", "w") as token_auth_user_outfile:
         token_auth_user_outfile.write(token_auth_user)
-        # json.dump(token_auth_user, token_auth_user_outfile)
 
 
 def read_token_file(verbose=False):
@@ -102,6 +101,7 @@ def read_token_file(verbose=False):
     else:
         with open(token_path) as token_json:
             token_generated = json.load(token_json)
+        print(f"Successfully read {token_path} from local file.")
 
     token_auth_user_path = "token_auth_user.txt"
     if not os.path.isfile(token_auth_user_path):
@@ -110,13 +110,14 @@ def read_token_file(verbose=False):
     else:
         with open(token_auth_user_path) as token_auth_user_txt:
             token_auth_user = token_auth_user_txt.read()
+        print(f"Successfully read {token_auth_user_path} from local file.")
 
     return token_generated, token_auth_user
 
 
-def full_token_credentialing(epoch_buffer=3600, verbose=False):
+def full_token_credentialing(buffer_seconds=600, verbose=False):
     try:
-        token_generated, token_auth_user = read_token_file(verbose=True)
+        token_generated, token_auth_user = read_token_file(verbose=verbose)
         # print("loaded token:", token_generated)
         # print(type(token_generated))
     except Exception as e:
@@ -136,30 +137,67 @@ def full_token_credentialing(epoch_buffer=3600, verbose=False):
         write_token_file(token_generated, token_auth_user, verbose=verbose)
         token_generated = token_generated.json()
 
-    token_remaining_time = token_generated['tokenInfo']['expiresAt'] - int(time.time())
+    # Anaplan API ['tokenInfo']['expiresAt'] is returned in milliseconds elapsed since epoch time -- divide by 1000 to get seconds
+    token_expire_epoch_seconds = token_generated['tokenInfo']['expiresAt']/1000.
+    token_remaining_time_seconds = token_expire_epoch_seconds - int(time.time())
+    token_expire_time_human_readable = datetime.datetime.fromtimestamp(token_expire_epoch_seconds).strftime('%m/%d/%Y %H:%M:%S')
 
     if verbose:
-        print(f"Token expires at: {token_generated['tokenInfo']['expiresAt']} (epoch time).")
+        print(f"Token expires at: {token_expire_epoch_seconds} (epoch time).")
         print(f"It is currently: {int(time.time())} (epoch time).")
-        print(f"Token expires in {token_remaining_time} seconds.")
-    if token_remaining_time <= epoch_buffer:
+        print(f"Token expires in {token_remaining_time_seconds} seconds.")
+
+    if token_remaining_time_seconds <= buffer_seconds:
         if verbose:
             print(f"Token will expire soon -- generating a new token...")
         token_generated, token_auth_user = generate_auth_token(verbose=verbose)
+        write_token_file(token_generated, token_auth_user, verbose=verbose)
         token_generated = token_generated.json()
     else:
         if verbose:
-            print(f"You should have plenty of time to use this token ({token_remaining_time} seconds).")
+            print(f"You have {token_remaining_time_seconds/60.} min) to use this token.")
 
-    return token_generated, token_auth_user, token_remaining_time
+    return token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable
 
 
-# san_diego_demo_creds = load_creds()
-# token_auth_user = generate_auth_token(san_diego_demo_creds)
-# flask_app_helper_functions.anaplan_get_user_trigger_status(token_auth_user, san_diego_demo_creds, verbose=False)
-#
-# workspace_id = san_diego_demo_creds['san-diego-demo']['workspace_id']
-# model_id = san_diego_demo_creds['san-diego-demo']['model_id']
+def anaplan_get_user_trigger_status(auth_token, creds, verbose=False):
+    wGuid = creds['san-diego-demo']['workspace_id']
+    mGuid = creds['san-diego-demo']['model_id']
+    user_trigger_export_id = creds['san-diego-demo']['user_trigger_export_id']
+
+    if verbose:
+        print('------------------- GETTING PARAMS FILE INFO (CHUNK METADATA) -------------------')
+    chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid,
+                                                                                                       user_trigger_export_id,
+                                                                                                       auth_token)
+    if verbose:
+        print(chunk_metadata_json)
+
+    if verbose:
+        print('------------------- GETTING PARAMS CHUNK DATA -------------------')
+        print('Total number of chunks: {}'.format(len(chunk_metadata_json['chunks'])))
+
+    # if len(chunk_metadata_json['chunks']) == 1:
+    chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid,
+                                                                                           user_trigger_export_id,
+                                                                                           chunk_metadata_json['chunks'][0]['id'],
+                                                                                           auth_token)
+    chunk_data_parsed = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
+
+    # print(chunk_data_text)
+    # print(chunk_data_parsed)
+    # print(chunk_data_parsed[1][1])
+
+    user_trigger_status = chunk_data_parsed[1][1] == 'true'
+    # print("user_trigger_status == 'true'?\t", user_trigger_status == 'true')
+
+    if user_trigger_status:
+        user_trigger_status_message = "An Anaplan user has triggered a button in Anaplan to execute the full run."
+    else:
+        user_trigger_status_message = "No Anaplan user action detected to execute the full run."
+
+    return user_trigger_status, user_trigger_status_message
+    # TODO: Reset the state of the trigger to False
 
 
 def anaplan_get_export_params(auth_token, creds, verbose=False):
@@ -248,7 +286,8 @@ def anaplan_get_export_historical_df(auth_token, creds, verbose=False):
 
     if len(chunk_metadata_json['chunks']) == 1:
         chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid,
-                                                                                               df_export_id, chunk_metadata_json['chunks'][0]['id'],
+                                                                                               df_export_id,
+                                                                                               chunk_metadata_json['chunks'][0]['id'],
                                                                                                auth_token)
         chunk_data_parsed = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
         historical_df = pd.DataFrame(chunk_data_parsed[1:], columns=chunk_data_parsed[0])
@@ -320,6 +359,11 @@ def simulate_data():
     sim_data_dict['fe_bounds'] = fe_bounds
 
     return sim_data_dict
+
+
+def full_run_realdata(num_time_predict=30, dry_run=True):
+    # TODO
+    pass
 
 
 # TODO: Split this into 2 functions: full_run_simdata, full_run_realdata?
