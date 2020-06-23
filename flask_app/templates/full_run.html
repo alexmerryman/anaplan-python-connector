@@ -9,14 +9,11 @@
     {% endif %}
 
     <h3>Predictions</h3>
-<!--<table>{{ full_run_data.df_predictions }}</table>-->
-<!--{% for table in tables %}-->
     {% if full_run_data.df_predictions %}
         {{ full_run_data.df_predictions | safe }}
     {% else %}
         <div><p>Error: Predictions DF does not exist.</p></div>
     {% endif %}
-<!--{% endfor %}-->
 
     <h3>Predictions File Upload (PUT) Response</h3>
     {% if full_run_data.pred_file_upload_response %}

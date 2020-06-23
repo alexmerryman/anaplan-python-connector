@@ -9,19 +9,21 @@ import flask_app_helper_functions
 @app.route('/index')
 def index():
     user = {'username': 'Alex'}
-    # TODO: Generate auth token
+
     return render_template('index.html', title='Anaplan-Python Connector Flask App', user=user)
 
 
 @app.route("/test_main")
 def test_main():
     data = test_main.main()
+
     return render_template('test_main.html', data=data)
 
 
 @app.route("/generate_token")
 def generate_token():
     TokenObj = full_run.full_token_credentialing()
+
     return render_template('auth_token.html',
                            creation_status=TokenObj.creation_status,
                            creation_status_message=TokenObj.creation_status_message,
@@ -35,19 +37,24 @@ def user_trigger_status():
     creds = full_run.load_creds()
     user_trigger_status, user_trigger_status_message = full_run.anaplan_get_user_trigger_status(TokenObj, creds=creds)
     user_trigger_status = str(user_trigger_status).upper()
+
     return render_template('user_trigger_status.html', user_trigger_status=user_trigger_status, user_trigger_status_message=user_trigger_status_message)
 
 
 @app.route("/workspaces/")  # TODO: Why doesn't route "/workspaces" work?
 def workspaces():
-    token_generated, token_auth_user, token_remaining_time_seconds, token_expire_time_human_readable = full_run.full_token_credentialing()
-    avail_workspaces = flask_app_helper_functions.anaplan_list_workspaces(token_auth_user)
+    TokenObj = full_run.full_token_credentialing()
+    avail_workspaces = flask_app_helper_functions.anaplan_list_workspaces(TokenObj.auth_token_string)
+
     return render_template('workspaces.html', avail_workspaces=avail_workspaces)
 
 
 @app.route("/model_exports")
 def model_exports():
-    model_exports = flask_app_helper_functions.anaplan_list_exports()
+    # Get params, historical df here?
+    TokenObj = full_run.full_token_credentialing()
+    model_exports = flask_app_helper_functions.anaplan_list_exports()  # TODO
+
     return render_template('model_exports.html', model_exports=model_exports)
 
 
@@ -61,26 +68,26 @@ def model_exports():
 def full_run_simdata():
     # TODO: Cache the data in case user navigate away, it doesn't have to re-run/re-calculate everything?
     df_historical, df_predictions, pred_file_upload_response, post_import_file_response, \
-    model_timestamp_file_upload_response, model_timestamp_post_import_file_response = full_run.main(sim_data=True, verbose=True, dry_run=True)
+    model_timestamp_file_upload_response, model_timestamp_post_import_file_response = full_run.full_run_main(num_time_predict=30, dry_run=True, verbose=True)
 
     full_run_data = {'df_historical': df_historical.to_html(),
                      'df_predictions': df_predictions.to_html(),
-                     'pred_file_upload_response': pred_file_upload_response,
-                     'post_import_file_response_code': post_import_file_response.json()['status']['code'],
-                     'post_import_file_response_message': post_import_file_response.json()['status']['message'],
-                     'model_timestamp_file_upload_response': model_timestamp_file_upload_response,
-                     'model_timestamp_post_import_file_response_code': model_timestamp_post_import_file_response.json()['status']['code'],
-                     'model_timestamp_post_import_file_response_message': model_timestamp_post_import_file_response.json()['status']['message']
+                     'pred_file_upload_response': "N/A",
+                     'post_import_file_response_code': "N/A",
+                     'post_import_file_response_message': "Executed dry_run, so no import attempted.",
+                     'model_timestamp_file_upload_response': "N/A",
+                     'model_timestamp_post_import_file_response_code': "N/A",
+                     'model_timestamp_post_import_file_response_message': "Executed dry_run, so no import attempted."
                      }
 
-    return render_template('full_run.html', tables=[df_historical.to_html(), df_predictions.to_html()], full_run_data=full_run_data)  #
+    return render_template('full_run.html', tables=[df_historical.to_html(), df_predictions.to_html()], full_run_data=full_run_data)
 
 
-@app.route("/full_run_realdata")
-def full_run_realdata():
+@app.route("/full_run_main")
+def full_run_main():
     # TODO: Cache the data in case user navigate away, it doesn't have to re-run/re-calculate everything?
     df_historical, df_predictions, pred_file_upload_response, post_import_file_response, \
-    model_timestamp_file_upload_response, model_timestamp_post_import_file_response = full_run.main(sim_data=False, verbose=True, dry_run=False)
+    model_timestamp_file_upload_response, model_timestamp_post_import_file_response = full_run.full_run_main(num_time_predict=30, dry_run=False, verbose=True)  # TODO: Get num_time_predict from user input
 
     full_run_data = {'df_historical': df_historical.to_html(),
                      'df_predictions': df_predictions.to_html(),
