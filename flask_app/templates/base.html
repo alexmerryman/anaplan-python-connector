@@ -11,19 +11,32 @@
         {% endif %}
     </head>
     <body>
-        <div>Anaplan-Python Connector App Links:</div>
         <div>
+            <h1><a href="{{ url_for('index') }}">Anaplan-Python COVID-19 App</a></h1>
+            <h3>Overview</h3>
+            <p><i>This app allows users to retrieve parameters and data from a specified Anaplan model, use those parameters and data to fit a COVID-19 epidemiological model, generate predictions from the COVID-19 model, and import the predictions back into the Anaplan model, for Anaplan users to then use in budgeting/forecasting/planning on the Anaplan platform.</i></p>
+            <h3>COVID-19 Epidemiological Model</h3>
+            <p>This app uses <a href="https://ihmeuw-msca.github.io/CurveFit/">CurveFit</a>, a nonlinear mixed effects model-fitting package with applications in epidemiology, and currently used by federal, state, and local governments and agencies, including the CDC. The CurveFit package is used to generate COVID-related predictions.
+                The package is developed and maintained by the <a href="http://www.healthdata.org/">Institute for Health Metrics and Evaluation (IHME)</a>, an independent global health research center at the University of Washington.</p>
+        </div>
+        <hr>
+        <div>
+            <p>To execute a full run, click these links in order:</p>
+            <ol>
+                <li><a href="{{ url_for('generate_token') }}">Get authorization token for the Anaplan API</a></li>
+                <li><a href="{{ url_for('user_trigger_status') }}">Get the User Trigger Status</a></li>
+                <li><a href="{{ url_for('full_run_main_loop') }}">Full Run Loop -- Monitor User Trigger Status</a></li>
+            </ol>
+        <hr>
+            <p>Other links to execute (for testing):</p>
             <ul>
                 <li><a href="{{ url_for('index') }}">Home</a></li>
-                <li><a href="{{ url_for('test_main') }}">Test Main</a></li>
-                <li><a href="{{ url_for('full_run_simdata') }}">Full Run w/ Simulated Data</a></li>
-                <li><a href="{{ url_for('full_run_realdata') }}">Full Run w/ Real Data</a></li>
+                <li><a href="{{ url_for('full_run_simdata') }}">Full Run Once w/ Simulated Data</a></li>
+                <li><a href="{{ url_for('full_run_main') }}">Full Run Once w/ Real Data</a></li>
                 <li><a href="{{ url_for('workspaces') }}">Get All Available Workspaces</a></li>
-                <li><a href="{{ url_for('model_exports') }}">Get All Model Exports</a></li>
-                <li><a href="{{ url_for('user_trigger_status') }}">Get the User Trigger Status</a></li>
+<!--                <li><a href="{{ url_for('model_exports') }}">Get All Model Exports</a></li>-->
             </ul>
         </div>
-        <div><a href="{{ url_for('generate_token') }}">Get user token for the Anaplan API</a></div>
         <hr>
         {% block content %}{% endblock %}
     </body>

@@ -9,6 +9,10 @@ import anaplan_connect_helper_functions
 import model_covid
 import flask_app_helper_functions
 
+from app_classes import AnaplanUserAuthToken
+
+# TODO: Import logging -- to track errors, notes, comments, timestamps, values, etc
+
 
 def load_creds():
     """
@@ -38,56 +42,6 @@ def load_creds():
     else:
         creds = json.load(open(cred_path,))
         return creds
-
-
-# TODO: More robust credentialing, including refreshing the API token instead of re-generating it:
-# Use: The time.time() function returns the number of seconds since the epoch, as seconds.
-
-# creds = None
-# # The file token.pickle stores the user's access and refresh tokens, and is
-# # created automatically when the authorization flow completes for the first
-# # time.
-# if os.path.exists('token.pickle'):
-#     with open('token.pickle', 'rb') as token:
-#         creds = pickle.load(token)
-# # If there are no (valid) credentials available, let the user log in.
-# if not creds or not creds.valid:
-#     if creds and creds.expired and creds.refresh_token:
-#         creds.refresh(Request())
-#     else:
-#         flow = InstalledAppFlow.from_client_secrets_file(
-#             'credentials.json', SCOPES)
-#         creds = flow.run_local_server(port=0)
-#     # Save the credentials for the next run
-#     with open('token.pickle', 'wb') as token:
-#         pickle.dump(creds, token)
-
-
-class AnaplanUserAuthToken:
-    def __init__(self, token_json_obj, expiry_buffer=180):
-        self.creation_status = token_json_obj['status']
-        self.creation_status_message = token_json_obj['statusMessage']
-        self.expiry_millisec = token_json_obj['tokenInfo']['expiresAt']
-        self.id = token_json_obj['tokenInfo']['tokenId']
-        self.token_value = token_json_obj['tokenInfo']['tokenValue']
-        self.refresh_id = token_json_obj['tokenInfo']['refreshTokenId']
-        self.expiry_buffer = expiry_buffer
-        self.auth_token_string = ""
-
-    # Anaplan API ['tokenInfo']['expiresAt'] is returned in milliseconds elapsed since epoch time -- divide by 1000 to get seconds
-    # https://www.epochconverter.com/
-
-    def expiry_sec(self):
-        return self.expiry_millisec/1000.
-
-    def remaining_sec(self):
-        return self.expiry_sec() - int(time.time())
-
-    def expiry_formatted(self):
-        return datetime.datetime.fromtimestamp(self.expiry_sec()).strftime('%I:%M:%S %p, %m/%d/%Y')
-
-    def expired_status(self):
-        return self.remaining_sec() < self.expiry_buffer
 
 
 # Reference: https://anaplanauthentication.docs.apiary.io/#reference
@@ -144,7 +98,6 @@ def read_token_file(verbose=False):
 
 
 def full_token_credentialing(expiry_buffer=180, verbose=False):
-    # TODO: When running for the first time in a while, it will get the stored credentials and assume they are valid -- don't do this; automatically check expiry and generate new one
     try:
         token_generated, token_auth_user = read_token_file(verbose=verbose)
     except Exception as e:
@@ -238,11 +191,11 @@ def anaplan_get_export_params(TokenObj, creds, verbose=False):
     mGuid = creds['san-diego-demo']['model_id']  # TODO: Get this from user input via list_models
     param_export_id = creds['san-diego-demo']['params_export_id']   # TODO: Get this from user input via list_exports
 
-    if verbose:
-        print('------------------- GETTING PARAMS EXPORT DATA -------------------')
-    # ref: https://community.anaplan.com/t5/Best-Practices/RESTful-API-Best-Practices/ta-p/33579 (https://vimeo.com/318242332)
-    anaplan_param_export_response, anaplan_param_export_data_json = anaplan_connect_helper_functions.get_export_data(
-        wGuid, mGuid, param_export_id, TokenObj.auth_token_string)
+    # if verbose:
+    #     print('Getting params export data from Anaplan...')
+    # # ref: https://community.anaplan.com/t5/Best-Practices/RESTful-API-Best-Practices/ta-p/33579 (https://vimeo.com/318242332)
+    # anaplan_param_export_response, anaplan_param_export_data_json = anaplan_connect_helper_functions.get_export_data(
+    #     wGuid, mGuid, param_export_id, TokenObj.auth_token_string)
     # if verbose:
     #     print(anaplan_param_export_data_json['exportMetadata']['headerNames'])
     #     print(anaplan_param_export_data_json['exportMetadata']['dataTypes'])
@@ -250,20 +203,19 @@ def anaplan_get_export_params(TokenObj, creds, verbose=False):
     #     print(anaplan_param_export_data_json['exportMetadata']['exportFormat'])
     #     print(anaplan_param_export_data_json['exportMetadata']['delimiter'])
 
-    if verbose:
-        print('------------------- CREATING PARAMS (POST) EXPORT TASK -------------------')
-    anaplan_param_export_task_response, anaplan_param_export_task_json = anaplan_connect_helper_functions.post_export_task(wGuid, mGuid, param_export_id, TokenObj.auth_token_string)
-
+    # if verbose:
+    #     print('Creating params export task (POST)...')
+    # anaplan_param_export_task_response, anaplan_param_export_task_json = anaplan_connect_helper_functions.post_export_task(wGuid, mGuid, param_export_id, TokenObj.auth_token_string)
 
     # Then, get all chunks
     if verbose:
-        print('------------------- GETTING PARAMS FILE INFO (CHUNK METADATA) -------------------')
+        print('Getting params file info (chunk metadata) from Anaplan...')
     chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid, param_export_id, TokenObj.auth_token_string)
     if verbose:
         print(chunk_metadata_json)
 
     if verbose:
-        print('------------------- GETTING PARAMS CHUNK DATA -------------------')
+        print('Getting params chunk data from Anaplan...')
         print('Total number of chunks: {}'.format(len(chunk_metadata_json['chunks'])))
 
     if len(chunk_metadata_json['chunks']) == 1:
@@ -277,15 +229,8 @@ def anaplan_get_export_params(TokenObj, creds, verbose=False):
     else:
         all_param_chunk_data = []
         for c in chunk_metadata_json['chunks']:
-            # if verbose:
-            #     print('Chunk name, ID:', c['name'], ',', c['id'])
             chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid, param_export_id, c['id'], TokenObj.auth_token_string)
-            # print(chunk_data.url)
-            # print(chunk_data.status_code)
-            # print(chunk_data_text)
             chunk_data_parsed = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
-            # if verbose:
-            #     print(chunk_data_parsed)
             all_param_chunk_data.append(chunk_data_parsed)
 
         return all_param_chunk_data
@@ -296,25 +241,26 @@ def anaplan_get_export_historical_df(TokenObj, creds, verbose=False):
     mGuid = creds['san-diego-demo']['model_id']
     df_export_id = creds['san-diego-demo']['df_export_id']
 
-    if verbose:
-        print('------------------- GETTING HISTORICAL DF EXPORT DATA -------------------')
-    # ref: https://community.anaplan.com/t5/Best-Practices/RESTful-API-Best-Practices/ta-p/33579 (https://vimeo.com/318242332)
-    anaplan_historical_df_export_response, anaplan_historical_df_export_data_json = anaplan_connect_helper_functions.get_export_data(
-        wGuid, mGuid, df_export_id, TokenObj.auth_token_string)
-
-    if verbose:
-        print('------------------- CREATING HISTORICAL DF (POST) EXPORT TASK -------------------')
-    anaplan_historical_df_export_task_response, anaplan_historical_df_export_task_json = anaplan_connect_helper_functions.post_export_task(wGuid, mGuid, df_export_id, TokenObj.auth_token_string)
+    # if verbose:
+    #     print('Getting historical DF export data from Anaplan')
+    # # ref: https://community.anaplan.com/t5/Best-Practices/RESTful-API-Best-Practices/ta-p/33579 (https://vimeo.com/318242332)
+    # anaplan_historical_df_export_response, anaplan_historical_df_export_data_json = anaplan_connect_helper_functions.get_export_data(
+    #     wGuid, mGuid, df_export_id, TokenObj.auth_token_string)
+    #
+    # if verbose:
+    #     print('Creating historical DF export task (POST)...')
+    # anaplan_historical_df_export_task_response, anaplan_historical_df_export_task_json = anaplan_connect_helper_functions.post_export_task(wGuid, mGuid, df_export_id, TokenObj.auth_token_string)
 
     # Then, get all chunks
     if verbose:
-        print('------------------- GETTING HISTORICAL DF FILE INFO (CHUNK METADATA) -------------------')
+        print('Getting historical DF file info (chunk metadata) from Anaplan...')
     chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid, df_export_id, TokenObj.auth_token_string)
+
     if verbose:
         print(chunk_metadata_json)
 
     if verbose:
-        print('------------------- GETTING HISTORICAL DF CHUNK DATA -------------------')
+        print('Getting historical DF chunk data from Anaplan...')
         print('Total number of chunks: {}'.format(len(chunk_metadata_json['chunks'])))
 
     if len(chunk_metadata_json['chunks']) == 1:
@@ -333,10 +279,6 @@ def anaplan_get_export_historical_df(TokenObj, creds, verbose=False):
             if verbose:
                 print('Chunk name, ID:', c['name'], ',', c['id'])
             chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid, df_export_id, c['id'], TokenObj.auth_token_string)
-            # print(chunk_data.url)
-            # print(chunk_data.status_code)
-            # print(chunk_data_text)
-            # historical_df = pd.DataFrame.from_records([r.split(',') for r in chunk_data_text[1:]], columns=chunk_data_text.split('\n')[0])
             chunk_data_parsed = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
             if verbose:
                 print(chunk_data_parsed)
@@ -347,16 +289,56 @@ def anaplan_get_export_historical_df(TokenObj, creds, verbose=False):
         return historical_df
 
 
+def process_historical_df(df_historical):
+    df_historical['time_obs'] = df_historical['time_obs'].astype(int)
+    df_historical['death_rate'] = df_historical['death_rate'].astype(float)
+    df_historical['ln_death_rate'] = np.log(df_historical['death_rate'])
+    df_historical['group'] = 'all'
+    df_historical['intercept'] = 1.0  # TODO: Default to 1.0?
+
+    return df_historical
+
+
 def parse_params_chunk_data(params_chunk_data):
     # First element in params_chunk_data list is the header row; can ignore
     params_chunk_data = params_chunk_data[1:]
 
-    # Param values are exported as strings; cast all as float
+    # Param values are exported as strings; cast all as float (they should all be float)
+    # TODO: What if some params are not float? e.g. unbounded, np.inf, etc?
     params = {}
     for i in params_chunk_data:
         params[i[0]] = float(i[1])
 
     return params
+
+
+def process_params(params):
+    # TODO: Make more flexible to take any number of params
+    fe_init = [params['fe_init_1'], params['fe_init_2'], params['fe_init_3']]
+    re_init = [params['re_init_1'], params['re_init_2'], params['re_init_3']]
+    fe_gprior = [
+        [params['fe_gprior_1_lower'], params['fe_gprior_1_upper']],
+        [params['fe_gprior_2_lower'], params['fe_gprior_2_upper']],
+        [params['fe_gprior_3_lower'], params['fe_gprior_3_upper']]
+    ]
+    re_gprior = [
+        [params['re_gprior_1_lower'], params['re_gprior_1_upper']],
+        [params['re_gprior_2_lower'], params['re_gprior_2_upper']],
+        [params['re_gprior_3_lower'], params['re_gprior_3_upper']]
+    ]
+    fe_bounds = [
+        [params['fe_bounds_1_lower'], params['fe_bounds_1_upper']],
+        [params['fe_bounds_2_lower'], params['fe_bounds_2_upper']],
+        [params['fe_bounds_3_lower'], params['fe_bounds_3_upper']]
+    ]
+    re_bounds = [
+        [params['re_bounds_1_lower'], params['re_bounds_1_upper']],
+        [params['re_bounds_2_lower'], params['re_bounds_2_upper']],
+        [params['re_bounds_3_lower'], params['re_bounds_3_upper']]
+    ]
+    # model_options = params['options']  # TODO
+
+    return fe_init, re_init, fe_gprior, re_gprior, fe_bounds, re_bounds
 
 
 def validate_params(params):
@@ -380,40 +362,48 @@ def simulate_data():
                                   np.random.normal(0, 0.1, size=30).cumsum()
     df_historical['ln_death_rate'] = np.log(df_historical['death_rate'])
     df_historical['group'] = 'all'
-    df_historical['intercept'] = 1.0  # Default to 1.0 ?
+    df_historical['intercept'] = 1.0
     fe_init = [0, 0, 1.]
     fe_gprior = [[0, np.inf], [0, np.inf], [1., np.inf]]
     fe_bounds = [[0., 100.], [0., 100.], [0., 100.]]
 
-    sim_data_dict = {}
-    sim_data_dict['df_historical'] = df_historical
-    sim_data_dict['fe_init'] = fe_init
-    sim_data_dict['fe_gprior'] = fe_gprior
-    sim_data_dict['fe_bounds'] = fe_bounds
+    sim_data_dict = {
+        'df_historical': df_historical,
+        'fe_init': fe_init,
+        'fe_gprior': fe_gprior,
+        'fe_bounds': fe_bounds}
 
     return sim_data_dict
 
 
-def full_run_realdata(num_time_predict=30, dry_run=True, verbose=False):
-    if verbose:
-        print('Loading Anaplan credential from creds.json')
-    creds = load_creds()
-    email = creds['username']
-    pwd = creds['password']
+def make_temp_directory(verbose=False):
+    tmp_path = os.path.join(os.getcwd(), "tmp")
+    try:
+        os.makedirs(tmp_path)
+        if verbose:
+            print("`/tmp` directory successfully created.")
+    except OSError:
+        if verbose:
+            print("`/tmp` directory already exists.")
+        pass  # tmp_path directory already exists
 
-    wGuid = creds['san-diego-demo']['workspace_id']
-    mGuid = creds['san-diego-demo']['model_id']
-    predictions_file_id = creds['san-diego-demo']['predictions_file_id']
-    predictions_import_id = creds['san-diego-demo']['predictions_import_id']
-
-    TokenObj = full_token_credentialing()
-
-    # TODO
+    return tmp_path
 
 
+def filesize_to_chunks(filepath):
+    file_size = os.path.getsize(filepath) / 1000000.
+    print(f"File is: {file_size} MB")
+    if file_size < 10:
+        print(f"File small enough for 1 chunk of data ({filepath}).")
+    else:
+        print(f"File must be split into 2+ chunks of data ({filepath}).")
+        # TODO: In case file_size > 10 MB and must be split into 2+ chunks of data
+        pass
 
-# TODO: Split this into 2 functions: full_run_simdata, full_run_realdata?
-def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
+    return file_size
+
+
+def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
     """
     # TODO: Update these steps & docstring
     - Load credentials via load_creds()
@@ -426,82 +416,48 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     - Import projections back into Anaplan.
 
     :param num_time_predict: (int) Time to predict out (ex: number of days).
-    :param sim_data: (bool) Whether to use simulated data or real data from Anaplan.
-    :param verbose: (bool) Whether to print each step to the console as it's being executed.
     :param dry_run: (bool) Whether to execute a dry_run or not -- dry_run will run with verbose=True and sim_data=True
+    :param verbose: (bool) Whether to print each step to the console as it's being executed.
     :return:
     """
-
     if verbose:
-        print('Loading Anaplan credential from creds.json')
+        print('Loading Anaplan credential from creds.json...')
     creds = load_creds()
-    san_diego_demo_email = creds['username']
-    san_diego_demo_pwd = creds['password']
 
     wGuid = creds['san-diego-demo']['workspace_id']
     mGuid = creds['san-diego-demo']['model_id']
     predictions_file_id = creds['san-diego-demo']['predictions_file_id']
     predictions_import_id = creds['san-diego-demo']['predictions_import_id']
 
+    if verbose:
+        print("Getting authorization token (either saved locally or generating a new one)...")
     TokenObj = full_token_credentialing()
 
+    if verbose:
+        print('Getting params from Anaplan...')
+    params_chunks_unparsed = anaplan_get_export_params(TokenObj, creds, verbose=verbose)
+    params = parse_params_chunk_data(params_chunks_unparsed)
+    if verbose:
+        print('Processing params...')
+    fe_init, re_init, fe_gprior, re_gprior, fe_bounds, re_bounds = process_params(params)
+
     if dry_run:
-        sim_data = True
-        verbose = True
-
-    if sim_data:
         if verbose:
-            print('No data provided; using simulated data.')
+            print('dry_run=True passed, using simulated data...')
         sim_data_dict = simulate_data()
-
         df_historical = sim_data_dict['df_historical']
         fe_init = sim_data_dict['fe_init']
         fe_gprior = sim_data_dict['fe_gprior']
         fe_bounds = sim_data_dict['fe_bounds']
 
-        # pd.DataFrame.to_csv(df, "covid_sim_data.csv", index=False)
-
-    else:  # if sim_data == False, connect to Anaplan to get 'real' data
+    else:
         if verbose:
-            print('Getting params from Anaplan...')
-
-        params_chunks_unparsed = anaplan_get_export_params(TokenObj.auth_token_string, creds, verbose=verbose)
-        params = parse_params_chunk_data(params_chunks_unparsed)
+            print('Getting historical DF from Anaplan...')
+        df_historical = anaplan_get_export_historical_df(TokenObj, creds, verbose=verbose)
 
         if verbose:
-            print('Getting historical df from Anaplan...')
-        df_historical = anaplan_get_export_historical_df(TokenObj.auth_token_string, creds, verbose=verbose)
-
-        # TODO: Function-ize this?
-        df_historical['time_obs'] = df_historical['time_obs'].astype(int)
-        df_historical['death_rate'] = df_historical['death_rate'].astype(float)
-        df_historical['ln_death_rate'] = np.log(df_historical['death_rate'])
-        df_historical['group'] = 'all'
-        df_historical['intercept'] = 1.0  # TODO: Default to 1.0?
-        # TODO: Make more flexible to take any number of params
-        fe_init = [params['fe_init_1'], params['fe_init_2'], params['fe_init_3']]
-        re_init = [params['re_init_1'], params['re_init_2'], params['re_init_3']]
-        fe_gprior = [
-            [params['fe_gprior_1_lower'], params['fe_gprior_1_upper']],
-            [params['fe_gprior_2_lower'], params['fe_gprior_2_upper']],
-            [params['fe_gprior_3_lower'], params['fe_gprior_3_upper']]
-        ]
-        re_gprior = [
-            [params['re_gprior_1_lower'], params['re_gprior_1_upper']],
-            [params['re_gprior_2_lower'], params['re_gprior_2_upper']],
-            [params['re_gprior_3_lower'], params['re_gprior_3_upper']]
-        ]
-        fe_bounds = [
-            [params['fe_bounds_1_lower'], params['fe_bounds_1_upper']],
-            [params['fe_bounds_2_lower'], params['fe_bounds_2_upper']],
-            [params['fe_bounds_3_lower'], params['fe_bounds_3_upper']]
-        ]
-        re_bounds = [
-            [params['re_bounds_1_lower'], params['re_bounds_1_upper']],
-            [params['re_bounds_2_lower'], params['re_bounds_2_upper']],
-            [params['re_bounds_3_lower'], params['re_bounds_3_upper']]
-        ]
-        # model_options = params['options']  # TODO
+            print('Processing historical DF...')
+        df_historical = process_historical_df(df_historical)
 
     # if not validate_params(params):
     #     # TODO: Raise an exception/alert to the user if the params are in an invalid format
@@ -510,8 +466,6 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     # if not validate_df(df_historical):
     #     # TODO: Raise an exception/alert to the user if the DF is in an invalid format
     #     raise
-
-    # print(df_historical.head())
 
     model_args_dict = {
         'df': df_historical,
@@ -537,87 +491,109 @@ def main(num_time_predict=30, sim_data=False, verbose=False, dry_run=False):
     df_predictions['death_rate'] = np.exp(df_predictions['prediction_ln_death_rate'])
 
     # TODO: Add `group` ('all'), `intercept` (1.0) columns to df_predictions -- first change format in Anaplan to ensure compatibility on upload/import?
-    # # Keep only the actual death rate column (not `prediction_ln_death_rate`)
+    # TODO: Keep only the actual death rate column (not `prediction_ln_death_rate`) -- must change file schema in Anaplan first
     # df_predictions = df_predictions[['time_pred', 'death_rate']]
 
     # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
-    df_predictions.at[0, 'death_rate'] = -999
-    # print(df_predictions.head())
+    df_predictions.at[0, 'death_rate'] = -111
 
-    tmp_path = os.path.join(os.getcwd(), "tmp")
-    try:
-        os.makedirs(tmp_path)
+    if not dry_run:
+        tmp_path = make_temp_directory(verbose=verbose)
+
+        # =============== Predictions DF ===============
+        pred_filename = "Covid_Predictions.csv"  # This must the be exact name of the file currently in Anaplan which you are replacing/updating
+        # Save predictions DF locally as CSV
         if verbose:
-            print("`/tmp` directory successfully created.")
-    except OSError:
+            print('Saving predictions DF as a CSV locally...')
+        pred_filepath = os.path.join(tmp_path, pred_filename)
+        pd.DataFrame.to_csv(df_predictions, pred_filepath, index=False)
+
+        pred_file_size = filesize_to_chunks(pred_filepath)
+
+        data_file = open(pred_filepath, 'r').read().encode('utf-8')
+
+        # --- Initiate the upload ---
         if verbose:
-            print("`/tmp` directory already exists.")
-        pass  # tmp_path directory already exists
+            print('Uploading predictions DF to Anaplan...')
+        pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid,
+                                                                                     mGuid,
+                                                                                     predictions_file_id,
+                                                                                     data_file,
+                                                                                     TokenObj.auth_token_string)
 
-    # pred_file_timestamp = datetime.datetime.now().strftime('%Y-%m-%d')
-    # pred_filename = "covid_predictions_{TIME}.csv".format(TIME=pred_file_timestamp)
-    # TODO: Get pred_filename from Anaplan (select)?
-    pred_filename = "Covid_Predictions.csv"  # This must the be exact name of the file currently in Anaplan which you are replacing/updating
-    # Save predictions df locally as CSV
-    if verbose:
-        print('Saving predictions DF as a CSV locally...')
-    pred_filepath = os.path.join(tmp_path, pred_filename)
-    pd.DataFrame.to_csv(df_predictions, pred_filepath, index=False)
+        # --- Execute the import ---
+        if verbose:
+            print('Importing uploaded predictions DF to Anaplan...')
+        post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid,
+                                                                                                             mGuid,
+                                                                                                             predictions_import_id,
+                                                                                                             TokenObj.auth_token_string)
 
-    # TODO: Currently assuming the data to upload/import fits within 1 chunk (<10 MB)
-    pred_file_size = os.path.getsize(pred_filepath) / 1000000.
-    print("Predictions file is:", pred_file_size, "MB")
-    if pred_file_size < 10:
-        print("Small enough for 1 chunk of data.")
-    data_file = open(pred_filepath, 'r').read().encode('utf-8')
+        # TODO: Once import is complete, delete the .\temp directory?
 
-    # --- Initiate the upload ---
-    if verbose:
-        print('Uploading predictions DF to Anaplan...')
-    pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, predictions_file_id, data_file, TokenObj.auth_token_string)
-    # print(pred_file_upload_response)
+        # TODO: Check whether the import action was successful, how many rows uploaded/ignored, failure dump, etc
 
-    # --- Execute the import ---
-    if verbose:
-        print('Importing uploaded predictions DF to Anaplan...')
-    post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, predictions_import_id, TokenObj.auth_token_string)
-    # print(post_import_file_response)
-    # print(post_import_file_data)
+        # =============== Model Run Timestamp ===============
+        model_run_timestamp = datetime.datetime.now().strftime('%m/%d/%Y')
+        model_run_df = pd.DataFrame([model_run_timestamp], columns=['date'])
+        model_run_filename = "date_model_ran.csv"
+        model_run_filepath = os.path.join(tmp_path, model_run_filename)
+        pd.DataFrame.to_csv(model_run_df, model_run_filepath, index=False)
 
-    # Once import is complete, delete the .\temp directory
+        model_run_file_size = filesize_to_chunks(model_run_filepath)
 
-    # TODO: Check whether the import action was successful, how many rows uploaded/ignored, failure dump, etc
+        model_timestamp_data_file = open(model_run_filepath, 'r').read().encode('utf-8')
 
-    # TODO: Function-ize this
-    model_run_timestamp = datetime.datetime.now().strftime('%m/%d/%Y')
-    model_run_df = pd.DataFrame([model_run_timestamp], columns=['date'])
-    model_run_filename = "date_model_ran.csv"
-    model_run_filepath = os.path.join(tmp_path, model_run_filename)
-    pd.DataFrame.to_csv(model_run_df, model_run_filepath, index=False)
+        model_run_timestamp_file_id = creds['san-diego-demo']['model_run_timestamp_file_id']
+        model_run_timestamp_import_id = creds['san-diego-demo']['model_run_timestamp_import_id']
 
-    model_run_file_size = os.path.getsize(model_run_filepath) / 1000000.
-    print("Timestamp file is:", model_run_file_size, "MB")
-    if model_run_file_size < 10:
-        print("Small enough for 1 chunk of data.")
-    model_timestamp_data_file = open(model_run_filepath, 'r').read().encode('utf-8')
+        # --- Initiate the upload ---
+        if verbose:
+            print('Uploading model timestamp to Anaplan...')
+        model_timestamp_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid,
+                                                                                                mGuid,
+                                                                                                model_run_timestamp_file_id,
+                                                                                                model_timestamp_data_file,
+                                                                                                TokenObj.auth_token_string)
+        if verbose:
+            print("Timestamp upload (PUT) response:", model_timestamp_file_upload_response)
 
-    model_run_timestamp_file_id = creds['san-diego-demo']['model_run_timestamp_file_id']
-    model_run_timestamp_import_id = creds['san-diego-demo']['model_run_timestamp_import_id']
+        # --- Execute the import ---
+        if verbose:
+            print("Importing uploaded model timestamp to Anaplan...")
+        model_timestamp_post_import_file_response, model_timestamp_post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, model_run_timestamp_import_id, TokenObj.auth_token_string)
+        if verbose:
+            print("Timestamp import (POST) response:", model_timestamp_post_import_file_response)
+            # print("Data:\n", model_timestamp_post_import_file_data)
 
-    # --- Initiate the upload ---
-    if verbose:
-        print('Uploading model timestamp to Anaplan...')
-    model_timestamp_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid, mGuid, model_run_timestamp_file_id, model_timestamp_data_file, TokenObj.auth_token_string)
-    if verbose:  # TODO: Replicate this verbosity elsewhere; should this be a separate level of (greater) verbosity?
-        print("Timestamp upload (PUT) response:", model_timestamp_file_upload_response)
+    else:
+        print("dry_run=True passed, not actually uploading/importing (PUT/POST) to Anaplan.")
+        pred_file_upload_response = None
+        post_import_file_response = None
+        model_timestamp_file_upload_response = None
+        model_timestamp_post_import_file_response = None
 
-    # --- Execute the import ---
-    if verbose:
-        print("Importing uploaded model timestamp to Anaplan...")
-    model_timestamp_post_import_file_response, model_timestamp_post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, model_run_timestamp_import_id, TokenObj.auth_token_string)
-    if verbose:
-        print("Timestamp import (POST) response:", model_timestamp_post_import_file_response)
-        # print("Data:\n", model_timestamp_post_import_file_data)
+    return df_historical, df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response
+
+
+def full_run_main_loop(timeout_min=5, num_time_predict=30, dry_run=False, verbose=False):
+    time_begin = time.time()
+    time_end = time_begin + (timeout_min*60)
+
+    TokenObj = full_token_credentialing()
+    creds = load_creds()
+
+    user_trigger_status, user_trigger_status_message = anaplan_get_user_trigger_status(TokenObj, creds)
+
+    print("Timeout?", time_end < time.time())
+    print("User trigger status:", user_trigger_status)
+    while time_end < time.time() and not user_trigger_status:
+        print("Condition(s) passed; executing full_run_main")
+        user_trigger_status, user_trigger_status_message = anaplan_get_user_trigger_status(TokenObj, creds)
+
+    df_historical, df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response = full_run_main(num_time_predict=num_time_predict, dry_run=dry_run, verbose=verbose)
+
+    # TODO: anaplan_reset_user_trigger_status
 
     return df_historical, df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response
 
