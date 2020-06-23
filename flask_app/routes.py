@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request
 from flask_app import app
-import test_main
 import full_run
 import flask_app_helper_functions
 
@@ -9,15 +8,9 @@ import flask_app_helper_functions
 @app.route('/index')
 def index():
     user = {'username': 'Alex'}
+    TokenObj = full_run.full_token_credentialing()  # Automatically run full credentialing on start
 
     return render_template('index.html', title='Anaplan-Python Connector Flask App', user=user)
-
-
-@app.route("/test_main")
-def test_main():
-    data = test_main.main()
-
-    return render_template('test_main.html', data=data)
 
 
 @app.route("/generate_token")
@@ -66,7 +59,6 @@ def model_exports():
 
 @app.route("/full_run_simdata")
 def full_run_simdata():
-    # TODO: Cache the data in case user navigate away, it doesn't have to re-run/re-calculate everything?
     df_historical, df_predictions, pred_file_upload_response, post_import_file_response, \
     model_timestamp_file_upload_response, model_timestamp_post_import_file_response = full_run.full_run_main(num_time_predict=30, dry_run=True, verbose=True)
 
@@ -85,7 +77,6 @@ def full_run_simdata():
 
 @app.route("/full_run_main")
 def full_run_main():
-    # TODO: Cache the data in case user navigate away, it doesn't have to re-run/re-calculate everything?
     df_historical, df_predictions, pred_file_upload_response, post_import_file_response, \
     model_timestamp_file_upload_response, model_timestamp_post_import_file_response = full_run.full_run_main(num_time_predict=30, dry_run=False, verbose=True)  # TODO: Get num_time_predict from user input
 
@@ -102,10 +93,20 @@ def full_run_main():
     return render_template('full_run.html', tables=[df_historical.to_html(), df_predictions.to_html()], full_run_data=full_run_data)  # tables=[df_predictions.to_html()],
 
 
-@app.route("/monitor_anaplan")  # TODO: Should this route be linked to "/" so it executes immediately? Or require user input to begin?
-def monitor_anaplan():
-    # TODO: Create/use function in anaplan_connect_helper_functions -- monitor actions stream, and whenever one changes, execute full_run()
-    # Will have to generate user auth token -- make sure to use this with the rest of the app? Don't regenerate every time.
-    # Represent "button press" as a model action?
-    # Possible to continuously monitor? Or instead, get a snapshot every X seconds? Take snapshot initially, then monitor every X seconds
-    pass
+@app.route("/full_run_main_loop")
+def full_run_main_loop():
+    # TODO: Cache the data in case user navigate away, it doesn't have to re-run/re-calculate everything?
+    df_historical, df_predictions, pred_file_upload_response, post_import_file_response, \
+    model_timestamp_file_upload_response, model_timestamp_post_import_file_response = full_run.full_run_main_loop(num_time_predict=30, dry_run=False, verbose=True)  # TODO: Get num_time_predict from user input
+
+    full_run_data = {'df_historical': df_historical.to_html(),
+                     'df_predictions': df_predictions.to_html(),
+                     'pred_file_upload_response': pred_file_upload_response,
+                     'post_import_file_response_code': post_import_file_response.json()['status']['code'],
+                     'post_import_file_response_message': post_import_file_response.json()['status']['message'],
+                     'model_timestamp_file_upload_response': model_timestamp_file_upload_response,
+                     'model_timestamp_post_import_file_response_code': model_timestamp_post_import_file_response.json()['status']['code'],
+                     'model_timestamp_post_import_file_response_message': model_timestamp_post_import_file_response.json()['status']['message']
+                     }
+
+    return render_template('full_run.html', tables=[df_historical.to_html(), df_predictions.to_html()], full_run_data=full_run_data)  # tables=[df_predictions.to_html()],

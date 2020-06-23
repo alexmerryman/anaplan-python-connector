@@ -9,7 +9,10 @@ import anaplan_connect_helper_functions
 import model_covid
 import flask_app_helper_functions
 
+from app_classes import AnaplanUserAuthToken
+
 # TODO: Import logging -- to track errors, notes, comments, timestamps, values, etc
+
 
 def load_creds():
     """
@@ -39,56 +42,6 @@ def load_creds():
     else:
         creds = json.load(open(cred_path,))
         return creds
-
-
-# TODO: More robust credentialing, including refreshing the API token instead of re-generating it:
-# Use: The time.time() function returns the number of seconds since the epoch, as seconds.
-
-# creds = None
-# # The file token.pickle stores the user's access and refresh tokens, and is
-# # created automatically when the authorization flow completes for the first
-# # time.
-# if os.path.exists('token.pickle'):
-#     with open('token.pickle', 'rb') as token:
-#         creds = pickle.load(token)
-# # If there are no (valid) credentials available, let the user log in.
-# if not creds or not creds.valid:
-#     if creds and creds.expired and creds.refresh_token:
-#         creds.refresh(Request())
-#     else:
-#         flow = InstalledAppFlow.from_client_secrets_file(
-#             'credentials.json', SCOPES)
-#         creds = flow.run_local_server(port=0)
-#     # Save the credentials for the next run
-#     with open('token.pickle', 'wb') as token:
-#         pickle.dump(creds, token)
-
-
-class AnaplanUserAuthToken:
-    def __init__(self, token_json_obj, expiry_buffer=180):
-        self.creation_status = token_json_obj['status']
-        self.creation_status_message = token_json_obj['statusMessage']
-        self.expiry_millisec = token_json_obj['tokenInfo']['expiresAt']
-        self.id = token_json_obj['tokenInfo']['tokenId']
-        self.token_value = token_json_obj['tokenInfo']['tokenValue']
-        self.refresh_id = token_json_obj['tokenInfo']['refreshTokenId']
-        self.expiry_buffer = expiry_buffer
-        self.auth_token_string = ""
-
-    # Anaplan API ['tokenInfo']['expiresAt'] is returned in milliseconds elapsed since epoch time -- divide by 1000 to get seconds
-    # https://www.epochconverter.com/
-
-    def expiry_sec(self):
-        return self.expiry_millisec/1000.
-
-    def remaining_sec(self):
-        return self.expiry_sec() - int(time.time())
-
-    def expiry_formatted(self):
-        return datetime.datetime.fromtimestamp(self.expiry_sec()).strftime('%I:%M:%S %p, %m/%d/%Y')
-
-    def expired_status(self):
-        return self.remaining_sec() < self.expiry_buffer
 
 
 # Reference: https://anaplanauthentication.docs.apiary.io/#reference
@@ -542,7 +495,7 @@ def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
     # df_predictions = df_predictions[['time_pred', 'death_rate']]
 
     # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
-    df_predictions.at[0, 'death_rate'] = -999
+    df_predictions.at[0, 'death_rate'] = -111
 
     if not dry_run:
         tmp_path = make_temp_directory(verbose=verbose)
@@ -623,7 +576,7 @@ def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
     return df_historical, df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response
 
 
-def full_run_main_loop(timeout_min=10, num_time_predict=30, dry_run=False, verbose=False):
+def full_run_main_loop(timeout_min=5, num_time_predict=30, dry_run=False, verbose=False):
     time_begin = time.time()
     time_end = time_begin + (timeout_min*60)
 
@@ -632,7 +585,10 @@ def full_run_main_loop(timeout_min=10, num_time_predict=30, dry_run=False, verbo
 
     user_trigger_status, user_trigger_status_message = anaplan_get_user_trigger_status(TokenObj, creds)
 
-    while time.time() >= time_end and not user_trigger_status:
+    print("Timeout?", time_end < time.time())
+    print("User trigger status:", user_trigger_status)
+    while time_end < time.time() and not user_trigger_status:
+        print("Condition(s) passed; executing full_run_main")
         user_trigger_status, user_trigger_status_message = anaplan_get_user_trigger_status(TokenObj, creds)
 
     df_historical, df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response = full_run_main(num_time_predict=num_time_predict, dry_run=dry_run, verbose=verbose)
