@@ -69,7 +69,7 @@ def fit_model_predict(model_args_dict, verbose=False, charts=False):
     pred_df = pd.DataFrame()
     pred_df['time_pred'] = np.arange(obs_df[col_t].max()+1, obs_df[col_t].max()+num_time_predict+1)
     y_predictions = model.predict(
-        t=pred_df['time_pred'],  # TODO: Change this to predict for t values in the future
+        t=pred_df['time_pred'],
         group_name=obs_df[col_group].unique()
     )
 
