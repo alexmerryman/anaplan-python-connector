@@ -11,7 +11,7 @@
         {% endif %}
     </head>
     <body>
-        <div>
+        <div class="documentation">
             <h1><a href="{{ url_for('index') }}">Anaplan-Python COVID-19 App</a></h1>
             <h3>Overview</h3>
             <p><i>This app allows users to retrieve parameters and data from a specified Anaplan model, use those parameters and data to fit a COVID-19 epidemiological model, generate predictions from the COVID-19 model, and import the predictions back into the Anaplan model, for Anaplan users to then use in budgeting/forecasting/planning on the Anaplan platform.</i></p>
@@ -20,7 +20,7 @@
                 The package is developed and maintained by the <a href="http://www.healthdata.org/">Institute for Health Metrics and Evaluation (IHME)</a>, an independent global health research center at the University of Washington.</p>
         </div>
         <hr>
-        <div>
+        <div class="fullrunlinks">
             <p>To execute a full run, click these links in order:</p>
             <ol>
                 <li><a href="{{ url_for('generate_token') }}">Get authorization token for the Anaplan API</a></li>
@@ -28,6 +28,7 @@
                 <li><a href="{{ url_for('full_run_main_loop') }}">Full Run Loop -- Monitor User Trigger Status</a></li>
             </ol>
         <hr>
+            <div class="otherlinks">
             <p>Other links to execute (for testing):</p>
             <ul>
                 <li><a href="{{ url_for('index') }}">Home</a></li>
@@ -36,6 +37,8 @@
                 <li><a href="{{ url_for('workspaces') }}">Get All Available Workspaces</a></li>
 <!--                <li><a href="{{ url_for('model_exports') }}">Get All Model Exports</a></li>-->
             </ul>
+            <p><a href="https://us1a.app.anaplan.com/core3268/anaplan/framework.jsp?selectedWorkspaceId=8a81b08e4f6d2b43014fbe11122a160c&selectedModelId=96339A3A48394142A3E70E057F75480E">Open Anaplan Model (opens in this tab)</a></p>
+            </div>
         </div>
         <hr>
         {% block content %}{% endblock %}
