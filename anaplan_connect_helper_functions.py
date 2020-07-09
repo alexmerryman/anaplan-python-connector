@@ -106,7 +106,7 @@ def get_model_info(mGuid, user):
     }
 
     try:
-        model_info_response = requests.get('https://api.anaplan.com/2/0/models/{}'.format(mGuid),
+        model_info_response = requests.get('https://api.anaplan.com/2/0/models/{}'.format(mGuid),  # TODO: Refactor all url strings as f-strings
                                            headers=getHeaders)
         model_info_json = json.loads(model_info_response.text)
     except:
@@ -139,7 +139,7 @@ def get_model_imports(wGuid, mGuid, user):
                                               headers=getHeaders)
         model_imports_data = json.loads(model_imports_response.text)
     except:
-        model_imports_response = None
+        model_imports_response = None  # TODO
         model_imports_data = None  # TODO
         print('ERROR: Unable to get model imports via API.')
 
@@ -194,7 +194,7 @@ def put_upload_file(wGuid, mGuid, file_id, data_file, user):
             print('Something wrong with file upload (PUT request) - response: {}.'.format(put_import_file_response))
         # put_import_file_data = json.loads(put_import_file_response.text)
     except Exception as e:
-        put_import_file_response = None
+        put_import_file_response = None  # TODO
         put_import_file_data = None  # TODO
         print('ERROR: Unable to put file import via API ({})'.format(e))
 
@@ -230,7 +230,7 @@ def post_upload_file(wGuid, mGuid, import_id, user):
         # print(post_import_file_response.url)
         post_import_file_data = json.loads(post_import_file_response.text)
     except Exception as e:
-        post_import_file_response = None
+        post_import_file_response = None  # TODO
         post_import_file_data = None  # TODO
         print('ERROR: Unable to post/execute file import via API ({})'.format(e))
 
@@ -258,7 +258,7 @@ def post_import_process(wGuid, mGuid, process_id, user):
         print(post_import_process_response.url)
         post_import_process_data = json.loads(post_import_process_response.text)
     except Exception as e:
-        post_import_process_response = None
+        post_import_process_response = None  # TODO
         post_import_process_data = None  # TODO
         print('ERROR: Unable to post/execute file import via API ({})'.format(e))
 

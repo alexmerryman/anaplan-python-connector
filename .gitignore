@@ -5,6 +5,9 @@ creds.json
 *.csv
 token.json
 token_auth_user.txt
+tmp
+
+.idea
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

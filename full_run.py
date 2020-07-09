@@ -142,12 +142,12 @@ def full_token_credentialing(expiry_buffer=180, verbose=False):
 def anaplan_get_user_trigger_status(TokenObj, creds, verbose=False):
     wGuid = creds['san-diego-demo']['workspace_id']
     mGuid = creds['san-diego-demo']['model_id']
-    user_trigger_export_id = creds['san-diego-demo']['user_trigger_export_id']
+    user_trigger_file_id = creds['san-diego-demo']['user_trigger_file_id']
 
     if verbose:
         print('Getting user trigger status chunk metadata...')
     chunk_metadata_response, chunk_metadata_json = anaplan_connect_helper_functions.get_chunk_metadata(wGuid, mGuid,
-                                                                                                       user_trigger_export_id,
+                                                                                                       user_trigger_file_id,
                                                                                                        TokenObj.auth_token_string)
     if verbose:
         print(chunk_metadata_json)
@@ -158,7 +158,7 @@ def anaplan_get_user_trigger_status(TokenObj, creds, verbose=False):
 
     # if len(chunk_metadata_json['chunks']) == 1:
     chunk_data_response, chunk_data_text = anaplan_connect_helper_functions.get_chunk_data(wGuid, mGuid,
-                                                                                           user_trigger_export_id,
+                                                                                           user_trigger_file_id,
                                                                                            chunk_metadata_json['chunks'][0]['id'],
                                                                                            TokenObj.auth_token_string)
     chunk_data_parsed = anaplan_connect_helper_functions.parse_chunk_data(chunk_data_text)
@@ -167,8 +167,8 @@ def anaplan_get_user_trigger_status(TokenObj, creds, verbose=False):
     # print(chunk_data_parsed)
     # print(chunk_data_parsed[1][1])
 
+    # user_trigger_status == True if user has clicked the button in Anaplan; otherwise, False
     user_trigger_status = chunk_data_parsed[1][1] == 'true'
-    # print("user_trigger_status == 'true'?\t", user_trigger_status == 'true')
 
     if user_trigger_status:
         user_trigger_status_message = "An Anaplan user has triggered a button in Anaplan to execute the full run."
@@ -176,14 +176,6 @@ def anaplan_get_user_trigger_status(TokenObj, creds, verbose=False):
         user_trigger_status_message = "No Anaplan user action detected to execute the full run."
 
     return user_trigger_status, user_trigger_status_message
-
-
-def anaplan_reset_user_trigger_status(TokenObj, creds, verbose=False):
-    wGuid = creds['san-diego-demo']['workspace_id']
-    mGuid = creds['san-diego-demo']['model_id']
-    user_trigger_export_id = creds['san-diego-demo']['user_trigger_export_id']
-
-    # TODO: This requires PUT & POST actions?
 
 
 def anaplan_get_export_params(TokenObj, creds, verbose=False):
@@ -378,6 +370,9 @@ def simulate_data():
 
 def make_temp_directory(verbose=False):
     tmp_path = os.path.join(os.getcwd(), "tmp")
+
+    # TODO: Refactor using: from pathlib import Path, Path(OI_path).mkdir(parents=True, exist_ok=True)
+
     try:
         os.makedirs(tmp_path)
         if verbose:
@@ -403,6 +398,85 @@ def filesize_to_chunks(filepath):
     return file_size
 
 
+def put_post_data(tmp_path, filename, data_df, workspace_id, model_id, put_destination_id, post_destination_id, TokenObj, verbose=False):
+    """
+    # TODO: Check whether tmp directory exists -- if not, create it.
+
+    Save data to tmp directory as CSV.
+    Get file_size to determine how many chunks to break it up into.
+    Read data as basic/encoded (for upload as octet-stream).
+    Put (upload) data to specified workspace/model.
+    Post (import) data to specified workspace/model.
+
+    :param tmp_path:
+    :param filename (str): The name you wish to save/import the data as -- NTOE: This must be the EXACT name as the file you are overwriting in Anaplan.
+    :param data_df (DataFrame): The data you wish to import.
+    :param workspace_id:
+    :param model_id:
+    :param destination_id:
+    :param TokenObj:
+    :param verbose:
+    :return:
+    """
+    pred_filename = "Covid_Predictions.csv"  # This must the be exact name of the file currently in Anaplan which you are replacing/updating
+    # Save predictions DF locally as CSV
+    if verbose:
+        print('Saving predictions DF as a CSV locally...')
+    data_tmp_filepath = os.path.join(tmp_path, filename)
+    pd.DataFrame.to_csv(data_df, data_tmp_filepath, index=False)
+
+    file_size = filesize_to_chunks(data_tmp_filepath)
+    # TODO: Break into chunks if necessary
+
+    data_file = open(data_tmp_filepath, 'r').read().encode('utf-8')
+
+    # --- Initiate the upload ---
+    if verbose:
+        print('Uploading data to Anaplan...')
+    put_upload_response = anaplan_connect_helper_functions.put_upload_file(workspace_id,
+                                                                                 model_id,
+                                                                                 put_destination_id,
+                                                                                 data_file,
+                                                                                 TokenObj.auth_token_string)
+
+    # --- Execute the import ---
+    if verbose:
+        print('Importing uploaded data DF to Anaplan...')
+    post_import_response, post_import_data = anaplan_connect_helper_functions.post_upload_file(workspace_id,
+                                                                                                         model_id,
+                                                                                                         post_destination_id,
+                                                                                                         TokenObj.auth_token_string)
+
+    return put_upload_response, post_import_response, post_import_data
+
+
+def validate_data_import():
+    # TODO
+    pass
+
+
+def anaplan_reset_user_trigger_status(TokenObj, creds, verbose=False):
+
+    # TODO: Just execute the import action "User Trigger Fill"?
+
+    # tmp_path = "tmp"
+    # filename = "user_trigger_export_csv"
+    # data_df = pd.DataFrame({'1':}) # TODO
+    workspace_id = creds['san-diego-demo']['workspace_id']
+    model_id = creds['san-diego-demo']['model_id']
+    put_destination_id = creds['san-diego-demo']['user_trigger_file_id']
+    post_destination_id = creds['san-diego-demo']['user_trigger_import_id']
+
+    post_import_reset_trigger_response, post_import_reset_trigger_data = anaplan_connect_helper_functions.post_upload_file(workspace_id, model_id, post_destination_id, TokenObj.auth_token_string)
+
+    # put_upload_response, \
+    #     post_import_response, post_import_data = put_post_data(tmp_path, filename, data_df, workspace_id, model_id,
+    #                                                            put_destination_id, post_destination_id, TokenObj,
+    #                                                            verbose=verbose)
+
+    return post_import_reset_trigger_response, post_import_reset_trigger_data
+
+
 def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
     """
     # TODO: Update these steps & docstring
@@ -426,8 +500,6 @@ def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
 
     wGuid = creds['san-diego-demo']['workspace_id']
     mGuid = creds['san-diego-demo']['model_id']
-    predictions_file_id = creds['san-diego-demo']['predictions_file_id']
-    predictions_import_id = creds['san-diego-demo']['predictions_import_id']
 
     if verbose:
         print("Getting authorization token (either saved locally or generating a new one)...")
@@ -501,33 +573,21 @@ def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
         tmp_path = make_temp_directory(verbose=verbose)
 
         # =============== Predictions DF ===============
-        pred_filename = "Covid_Predictions.csv"  # This must the be exact name of the file currently in Anaplan which you are replacing/updating
-        # Save predictions DF locally as CSV
-        if verbose:
-            print('Saving predictions DF as a CSV locally...')
-        pred_filepath = os.path.join(tmp_path, pred_filename)
-        pd.DataFrame.to_csv(df_predictions, pred_filepath, index=False)
+        pred_filename = "Covid_Predictions.csv"
 
-        pred_file_size = filesize_to_chunks(pred_filepath)
+        predictions_put_id = creds['san-diego-demo']['predictions_file_id']
+        predictions_post_id = creds['san-diego-demo']['predictions_import_id']
 
-        data_file = open(pred_filepath, 'r').read().encode('utf-8')
-
-        # --- Initiate the upload ---
-        if verbose:
-            print('Uploading predictions DF to Anaplan...')
-        pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid,
-                                                                                     mGuid,
-                                                                                     predictions_file_id,
-                                                                                     data_file,
-                                                                                     TokenObj.auth_token_string)
-
-        # --- Execute the import ---
-        if verbose:
-            print('Importing uploaded predictions DF to Anaplan...')
-        post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid,
-                                                                                                             mGuid,
-                                                                                                             predictions_import_id,
-                                                                                                             TokenObj.auth_token_string)
+        pred_put_upload_response, \
+            pred_post_import_response, pred_post_import_data = put_post_data(tmp_path,
+                                                                             pred_filename,
+                                                                             df_predictions,
+                                                                             wGuid,
+                                                                             mGuid,
+                                                                             predictions_put_id,
+                                                                             predictions_post_id,
+                                                                             TokenObj,
+                                                                             verbose=verbose)
 
         # TODO: Once import is complete, delete the .\temp directory?
 
@@ -537,63 +597,53 @@ def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
         model_run_timestamp = datetime.datetime.now().strftime('%m/%d/%Y')
         model_run_df = pd.DataFrame([model_run_timestamp], columns=['date'])
         model_run_filename = "date_model_ran.csv"
-        model_run_filepath = os.path.join(tmp_path, model_run_filename)
-        pd.DataFrame.to_csv(model_run_df, model_run_filepath, index=False)
 
-        model_run_file_size = filesize_to_chunks(model_run_filepath)
+        model_run_timestamp_put_id = creds['san-diego-demo']['model_run_timestamp_file_id']
+        model_run_timestamp_post_id = creds['san-diego-demo']['model_run_timestamp_import_id']
 
-        model_timestamp_data_file = open(model_run_filepath, 'r').read().encode('utf-8')
-
-        model_run_timestamp_file_id = creds['san-diego-demo']['model_run_timestamp_file_id']
-        model_run_timestamp_import_id = creds['san-diego-demo']['model_run_timestamp_import_id']
-
-        # --- Initiate the upload ---
-        if verbose:
-            print('Uploading model timestamp to Anaplan...')
-        model_timestamp_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid,
-                                                                                                mGuid,
-                                                                                                model_run_timestamp_file_id,
-                                                                                                model_timestamp_data_file,
-                                                                                                TokenObj.auth_token_string)
-        if verbose:
-            print("Timestamp upload (PUT) response:", model_timestamp_file_upload_response)
-
-        # --- Execute the import ---
-        if verbose:
-            print("Importing uploaded model timestamp to Anaplan...")
-        model_timestamp_post_import_file_response, model_timestamp_post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid, mGuid, model_run_timestamp_import_id, TokenObj.auth_token_string)
-        if verbose:
-            print("Timestamp import (POST) response:", model_timestamp_post_import_file_response)
-            # print("Data:\n", model_timestamp_post_import_file_data)
+        model_run_put_upload_response, \
+            model_run_post_import_response, model_run_post_import_data = put_post_data(tmp_path,
+                                                                                       model_run_filename,
+                                                                                       model_run_df,
+                                                                                       wGuid,
+                                                                                       mGuid,
+                                                                                       model_run_timestamp_put_id,
+                                                                                       model_run_timestamp_post_id,
+                                                                                       TokenObj,
+                                                                                       verbose=verbose)
 
     else:
         print("dry_run=True passed, not actually uploading/importing (PUT/POST) to Anaplan.")
-        pred_file_upload_response = None
-        post_import_file_response = None
-        model_timestamp_file_upload_response = None
-        model_timestamp_post_import_file_response = None
+        pred_put_upload_response = None
+        pred_post_import_response = None
+        model_run_put_upload_response = None
+        model_run_post_import_response = None
 
-    return df_historical, df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response
+    return df_historical, df_predictions, pred_put_upload_response, pred_post_import_response, model_run_put_upload_response, model_run_post_import_response
 
 
 def full_run_main_loop(timeout_min=5, num_time_predict=30, dry_run=False, verbose=False):
     time_begin = time.time()
-    time_end = time_begin + (timeout_min*60)
+    timeout_time = time_begin + (timeout_min*60)
 
     TokenObj = full_token_credentialing()
     creds = load_creds()
 
     user_trigger_status, user_trigger_status_message = anaplan_get_user_trigger_status(TokenObj, creds)
 
-    print("Timeout?", time_end < time.time())
+    print("Timeout?", timeout_time >= time.time())
     print("User trigger status:", user_trigger_status)
-    while time_end < time.time() and not user_trigger_status:
-        print("Condition(s) passed; executing full_run_main")
+    while timeout_time >= time.time() and not user_trigger_status:  # Stay in loop until timeout, or user_trigger_status == True
+        TokenObj = full_token_credentialing()
         user_trigger_status, user_trigger_status_message = anaplan_get_user_trigger_status(TokenObj, creds)
 
+    print("Condition(s) passed to break while loop; executing full_run_main...")
     df_historical, df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response = full_run_main(num_time_predict=num_time_predict, dry_run=dry_run, verbose=verbose)
 
-    # TODO: anaplan_reset_user_trigger_status
+    print("Resetting user trigger status to False...")
+    post_import_reset_trigger_response, post_import_reset_trigger_data = anaplan_reset_user_trigger_status(TokenObj, creds, verbose=verbose)
+    print(post_import_reset_trigger_response)
+    print(post_import_reset_trigger_data)
 
     return df_historical, df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response
 
