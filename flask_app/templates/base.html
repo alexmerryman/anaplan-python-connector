@@ -25,15 +25,15 @@
             <ol>
                 <li><a href="{{ url_for('generate_token') }}">Get authorization token for the Anaplan API</a></li>
                 <li><a href="{{ url_for('user_trigger_status') }}">Get the User Trigger Status</a></li>
-                <li><a href="{{ url_for('full_run_main_loop') }}">Full Run Loop -- Monitor User Trigger Status</a></li>
+                <li><a href="{{ url_for('full_run_main_loop') }}">(DISABLED) Full Run Loop -- Monitor User Trigger Status</a></li>
             </ol>
         <hr>
             <div class="otherlinks">
             <p>Other links to execute (for testing):</p>
             <ul>
                 <li><a href="{{ url_for('index') }}">Home</a></li>
-                <li><a href="{{ url_for('full_run_simdata') }}">Full Run Once w/ Simulated Data</a></li>
-                <li><a href="{{ url_for('full_run_main') }}">Full Run Once w/ Real Data</a></li>
+                <li><a href="{{ url_for('full_run_simdata') }}">(DISABLED) Full Run Once w/ Simulated Data</a></li>
+                <li><a href="{{ url_for('full_run_main') }}">(DISABLED) Full Run Once w/ Real Data</a></li>
                 <li><a href="{{ url_for('workspaces') }}">Get All Available Workspaces</a></li>
 <!--                <li><a href="{{ url_for('model_exports') }}">Get All Model Exports</a></li>-->
             </ul>
