@@ -2,11 +2,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from CurveFit_master.src.curvefit.models.core_model import CoreModel
-from CurveFit_master.src.curvefit.core.functions import expit, normal_loss
-from CurveFit_master.src.curvefit.core.data import Data
-from CurveFit_master.src.curvefit.core.parameter import Variable, Parameter, ParameterSet
-from CurveFit_master.src.curvefit.solvers.solvers import ScipyOpt
+from curvefit.models.core_model import CoreModel
+from curvefit.core.functions import expit, normal_loss
+from curvefit.core.data import Data
+from curvefit.core.parameter import Variable, Parameter, ParameterSet
+from curvefit.solvers.solvers import ScipyOpt
 
 # from curvefit.core.model import CurveModel
 # from curvefit.core.functions import ln_gaussian_cdf
@@ -15,7 +15,7 @@ from CurveFit_master.src.curvefit.solvers.solvers import ScipyOpt
 # Using CurveFit package from: https://github.com/ihmeuw-msca/CurveFit
 
 # Install the CurveFit package in your virtual environment by running:
-# `pip install git+https://github.com/ihmeuw-msca/CurveFit.git` from the command line.
+# `python -m pip install git+https://github.com/ihmeuw-msca/CurveFit.git@b7178a07441abc4695b80f83ad71ebbda2ca2cff` from the command line.
 
 # NOTE: CurveFit requires Python 3.6+, as it uses f-strings in its error handling.
 
