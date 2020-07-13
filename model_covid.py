@@ -1,8 +1,15 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from curvefit.core.model import CurveModel
-from curvefit.core.functions import ln_gaussian_cdf
+
+from CurveFit_master.src.curvefit.models.core_model import CoreModel
+from CurveFit_master.src.curvefit.core.functions import expit, normal_loss
+from CurveFit_master.src.curvefit.core.data import Data
+from CurveFit_master.src.curvefit.core.parameter import Variable, Parameter, ParameterSet
+from CurveFit_master.src.curvefit.solvers.solvers import ScipyOpt
+
+# from curvefit.core.model import CurveModel
+# from curvefit.core.functions import ln_gaussian_cdf
 # TODO: Import * (for above)? To make other functions available to user (accept other values for `model_args_dict['fun']`)
 
 # Using CurveFit package from: https://github.com/ihmeuw-msca/CurveFit
