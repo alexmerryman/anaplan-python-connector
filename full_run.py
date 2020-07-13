@@ -16,7 +16,7 @@ from app_classes import AnaplanUserAuthToken
 
 def load_creds():
     """
-    creds.json schema:
+    creds.json.json schema:
     {
     "username": "user@domain.com",
     "password": "password",
@@ -30,14 +30,14 @@ def load_creds():
         }
     }
 
-    Since `creds.json` is in .gitignore, create the file in your local copy of the project when you clone it.
+    Since `creds.json.json` is in .gitignore, create the file in your local copy of the project when you clone it.
 
-    :return: creds (dict): Contains relevant credentials for logging into Anaplan and creating a token to access the API
+    :return: creds.json (dict): Contains relevant credentials for logging into Anaplan and creating a token to access the API
     """
 
-    cred_path = "creds.json"
+    cred_path = "creds.json.json"
     if not os.path.isfile(cred_path):
-        print('ERROR: No file called `creds.json` found in the path.')
+        print('ERROR: No file called `creds.json.json` found in the path.')
         return None
     else:
         creds = json.load(open(cred_path,))
@@ -421,7 +421,7 @@ def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
     :return:
     """
     if verbose:
-        print('Loading Anaplan credential from creds.json...')
+        print('Loading Anaplan credential from creds.json.json...')
     creds = load_creds()
 
     wGuid = creds['san-diego-demo']['workspace_id']
