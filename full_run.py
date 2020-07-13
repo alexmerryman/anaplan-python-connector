@@ -6,7 +6,7 @@ import pandas as pd
 import datetime
 import time
 import anaplan_connect_helper_functions
-import model_covid
+# import model_covid
 import flask_app_helper_functions
 
 from app_classes import AnaplanUserAuthToken
@@ -32,7 +32,7 @@ def load_creds():
 
     Since `creds.json` is in .gitignore, create the file in your local copy of the project when you clone it.
 
-    :return: creds (dict): Contains relevant credentials for logging into Anaplan and creating a token to access the API
+    :return: creds.json (dict): Contains relevant credentials for logging into Anaplan and creating a token to access the API
     """
 
     cred_path = "creds.json"
@@ -142,7 +142,7 @@ def full_token_credentialing(expiry_buffer=180, verbose=False):
 def anaplan_get_user_trigger_status(TokenObj, creds, verbose=False):
     wGuid = creds['san-diego-demo']['workspace_id']
     mGuid = creds['san-diego-demo']['model_id']
-    user_trigger_export_id = creds['san-diego-demo']['user_trigger_export_id']
+    user_trigger_export_id = creds['san-diego-demo']['user_trigger_file_id']
 
     if verbose:
         print('Getting user trigger status chunk metadata...')
@@ -483,55 +483,55 @@ def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
         'num_time_predict': num_time_predict
     }
 
-    if verbose:
-        print('Fitting model to parameters, generating predictions...')
-    model, df_predictions = model_covid.fit_model_predict(model_args_dict, verbose=verbose, charts=False)
-
-    # invert ln(death rate) to get predicted actual death rate
-    df_predictions['death_rate'] = np.exp(df_predictions['prediction_ln_death_rate'])
-
-    # TODO: Add `group` ('all'), `intercept` (1.0) columns to df_predictions -- first change format in Anaplan to ensure compatibility on upload/import?
-    # TODO: Keep only the actual death rate column (not `prediction_ln_death_rate`) -- must change file schema in Anaplan first
-    # df_predictions = df_predictions[['time_pred', 'death_rate']]
-
-    # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
-    df_predictions.at[0, 'death_rate'] = -111
+    # if verbose:
+    #     print('Fitting model to parameters, generating predictions...')
+    # model, df_predictions = model_covid.fit_model_predict(model_args_dict, verbose=verbose, charts=False)
+    #
+    # # invert ln(death rate) to get predicted actual death rate
+    # df_predictions['death_rate'] = np.exp(df_predictions['prediction_ln_death_rate'])
+    #
+    # # TODO: Add `group` ('all'), `intercept` (1.0) columns to df_predictions -- first change format in Anaplan to ensure compatibility on upload/import?
+    # # TODO: Keep only the actual death rate column (not `prediction_ln_death_rate`) -- must change file schema in Anaplan first
+    # # df_predictions = df_predictions[['time_pred', 'death_rate']]
+    #
+    # # Test to verify the file was correctly uploaded to Anaplan -- first row should contain this nonsensical value
+    # df_predictions.at[0, 'death_rate'] = -111
 
     if not dry_run:
         tmp_path = make_temp_directory(verbose=verbose)
 
-        # =============== Predictions DF ===============
-        pred_filename = "Covid_Predictions.csv"  # This must the be exact name of the file currently in Anaplan which you are replacing/updating
-        # Save predictions DF locally as CSV
-        if verbose:
-            print('Saving predictions DF as a CSV locally...')
-        pred_filepath = os.path.join(tmp_path, pred_filename)
-        pd.DataFrame.to_csv(df_predictions, pred_filepath, index=False)
-
-        pred_file_size = filesize_to_chunks(pred_filepath)
-
-        data_file = open(pred_filepath, 'r').read().encode('utf-8')
-
-        # --- Initiate the upload ---
-        if verbose:
-            print('Uploading predictions DF to Anaplan...')
-        pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid,
-                                                                                     mGuid,
-                                                                                     predictions_file_id,
-                                                                                     data_file,
-                                                                                     TokenObj.auth_token_string)
-
-        # --- Execute the import ---
-        if verbose:
-            print('Importing uploaded predictions DF to Anaplan...')
-        post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid,
-                                                                                                             mGuid,
-                                                                                                             predictions_import_id,
-                                                                                                             TokenObj.auth_token_string)
-
-        # TODO: Once import is complete, delete the .\temp directory?
-
-        # TODO: Check whether the import action was successful, how many rows uploaded/ignored, failure dump, etc
+        # # =============== Predictions DF ===============
+        # pred_filename = "Covid_Predictions.csv"  # This must the be exact name of the file currently in Anaplan which you are replacing/updating
+        # # Save predictions DF locally as CSV
+        # if verbose:
+        #     print('Saving predictions DF as a CSV locally...')
+        # pred_filepath = os.path.join(tmp_path, pred_filename)
+        # pd.DataFrame.to_csv(df_predictions, pred_filepath, index=False)
+        #
+        # pred_file_size = filesize_to_chunks(pred_filepath)
+        #
+        # data_file = open(pred_filepath, 'r').read().encode('utf-8')
+        #
+        # # --- Initiate the upload ---
+        # if verbose:
+        #     print('Uploading predictions DF to Anaplan...')
+        # pred_file_upload_response = anaplan_connect_helper_functions.put_upload_file(wGuid,
+        #                                                                              mGuid,
+        #                                                                              predictions_file_id,
+        #                                                                              data_file,
+        #                                                                              TokenObj.auth_token_string)
+        #
+        # # --- Execute the import ---
+        # if verbose:
+        #     print('Importing uploaded predictions DF to Anaplan...')
+        # post_import_file_response, post_import_file_data = anaplan_connect_helper_functions.post_upload_file(wGuid,
+        #                                                                                                      mGuid,
+        #                                                                                                      predictions_import_id,
+        #                                                                                                      TokenObj.auth_token_string)
+        #
+        # # TODO: Once import is complete, delete the .\temp directory?
+        #
+        # # TODO: Check whether the import action was successful, how many rows uploaded/ignored, failure dump, etc
 
         # =============== Model Run Timestamp ===============
         model_run_timestamp = datetime.datetime.now().strftime('%m/%d/%Y')
@@ -573,7 +573,7 @@ def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
         model_timestamp_file_upload_response = None
         model_timestamp_post_import_file_response = None
 
-    return df_historical, df_predictions, pred_file_upload_response, post_import_file_response, model_timestamp_file_upload_response, model_timestamp_post_import_file_response
+    return df_historical, model_timestamp_file_upload_response, model_timestamp_post_import_file_response  # df_predictions, pred_file_upload_response, post_import_file_response
 
 
 def full_run_main_loop(timeout_min=5, num_time_predict=30, dry_run=False, verbose=False):
