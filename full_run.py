@@ -6,6 +6,7 @@ import pandas as pd
 import datetime
 import time
 import anaplan_connect_helper_functions
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 # import model_covid
 import flask_app_helper_functions
 
@@ -16,7 +17,7 @@ from app_classes import AnaplanUserAuthToken
 
 def load_creds():
     """
-    creds.json.json schema:
+    creds.json schema:
     {
     "username": "user@domain.com",
     "password": "password",
@@ -30,23 +31,48 @@ def load_creds():
         }
     }
 
-    Since `creds.json.json` is in .gitignore, create the file in your local copy of the project when you clone it.
+    Since `creds.json` is in .gitignore, create the file in your local copy of the project when you clone it.
 
     :return: creds.json (dict): Contains relevant credentials for logging into Anaplan and creating a token to access the API
     """
 
-    cred_path = "creds.json.json"
+    cred_path = "creds.json"
     if not os.path.isfile(cred_path):
-        print('ERROR: No file called `creds.json.json` found in the path.')
+        print('ERROR: No file called `creds.json` found in the path.')
         return None
     else:
         creds = json.load(open(cred_path,))
         return creds
 
 
+def load_creds_blob():
+    # TODO: Store blob/Azure access creds as environment variable? In app services settings?
+    AZURE_BLOB_CONN_STR = os.getenv("AZURE_BLOB_CONN_STR")
+
+    blob_service_client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONN_STR)
+
+    container_client = blob_service_client.get_container_client("anaplan-python-covid-app")
+    blob_client = container_client.get_blob_client("creds.json")
+
+    blob_list = container_client.list_blobs()
+    # for blob in blob_list:
+    #     print("\t" + blob.name)
+
+    with open('creds.json', "wb") as my_blob:
+        download_stream = blob_client.download_blob()
+        my_blob.write(download_stream.readall())
+    print('Reading creds from blob:', json.load(open('creds.json',)))
+
+
+def load_creds_env_var():
+    creds = json.loads(os.getenv("CREDS"))
+
+    return creds
+
+
 # Reference: https://anaplanauthentication.docs.apiary.io/#reference
 def generate_auth_token(verbose=False):
-    creds = load_creds()
+    creds = load_creds_env_var()
     email = creds['username']
     pwd = creds['password']
 
@@ -59,40 +85,32 @@ def generate_auth_token(verbose=False):
 
 
 def write_token_file(token_generated, token_auth_user, verbose=False):
-    # TODO: Write to subdirectory, instead of main directory?
     if verbose:
-        print("Saving token locally...")
-    with open("token.json", "wb") as token_outfile:
-        # print(token_generated.content)
-        token_outfile.write(token_generated.content)
+        print("Saving token to environment variable...")
+    os.environ["ANAPLAN_TOKEN"] = token_generated.text
 
     if verbose:
-        print("Saving token auth user locally...")
-    with open("token_auth_user.txt", "w") as token_auth_user_outfile:
-        token_auth_user_outfile.write(token_auth_user)
+        print("Saving token auth user to environment variable...")
+    os.environ["ANAPLAN_TOKEN_AUTH_USER"] = token_auth_user
 
 
 def read_token_file(verbose=False):
     if verbose:
-        print("Attempting to read token from saved file...")
+        print("Attempting to read token from environment variables...")
 
-    token_path = "token.json"
-    if not os.path.isfile(token_path):
-        print(f"ERROR: No file called `{token_path}` found in the path.")
+    if not os.getenv("ANAPLAN_TOKEN"):
+        print(f"WARNING: No environment variable called `ANAPLAN_TOKEN` found.")
         token_generated = None
     else:
-        with open(token_path) as token_json:
-            token_generated = json.load(token_json)
-        print(f"Successfully read {token_path} from local file.")
+        token_generated = json.loads(os.getenv("ANAPLAN_TOKEN"))
+        print(f"Successfully read ANAPLAN_TOKEN from environment variables.")
 
-    token_auth_user_path = "token_auth_user.txt"
-    if not os.path.isfile(token_auth_user_path):
-        print(f"ERROR: No file called `{token_auth_user_path}` found in the path.")
+    if not os.getenv("ANAPLAN_TOKEN_AUTH_USER"):
+        print(f"WARNING: No environment variable called `ANAPLAN_TOKEN_AUTH_USER` found.")
         token_auth_user = None
     else:
-        with open(token_auth_user_path) as token_auth_user_txt:
-            token_auth_user = token_auth_user_txt.read()
-        print(f"Successfully read {token_auth_user_path} from local file.")
+        token_auth_user = os.getenv("ANAPLAN_TOKEN_AUTH_USER")
+        print(f"Successfully read ANAPLAN_TOKEN_AUTH_USER from environment variables.")
 
     return token_generated, token_auth_user
 
@@ -101,10 +119,10 @@ def full_token_credentialing(expiry_buffer=180, verbose=False):
     try:
         token_generated, token_auth_user = read_token_file(verbose=verbose)
     except Exception as e:
-        print(f"Unable to load token_generated, token_auth_user from local file (exception {e}); generating new ones...")
+        print(f"Unable to load token_generated, token_auth_user from environment variables (exception {e}); generating new ones...")
         token_generated, token_auth_user = generate_auth_token(verbose=verbose)
         if verbose:
-            print("Writing token and auth user to local files (token.json, token_auth_user.txt)...")
+            print("Writing token and auth user to environment variables (`ANAPLAN_TOKEN`, `ANAPLAN_TOKEN_AUTH_USER`)...")
         write_token_file(token_generated, token_auth_user, verbose=verbose)
 
     if (not token_generated) or (not token_auth_user):
@@ -377,6 +395,7 @@ def simulate_data():
 
 
 def make_temp_directory(verbose=False):
+    # TODO: Refactor to use Blob storage?
     tmp_path = os.path.join(os.getcwd(), "tmp")
     try:
         os.makedirs(tmp_path)
@@ -406,7 +425,7 @@ def filesize_to_chunks(filepath):
 def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
     """
     # TODO: Update these steps & docstring
-    - Load credentials via load_creds()
+    - Load credentials via load_creds_env_var()
     - Generate an auth token.
 
     - Run get_anaplan_params.py
@@ -421,8 +440,8 @@ def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
     :return:
     """
     if verbose:
-        print('Loading Anaplan credential from creds.json.json...')
-    creds = load_creds()
+        print('Loading Anaplan credential from creds.json...')
+    creds = load_creds_env_var()
 
     wGuid = creds['san-diego-demo']['workspace_id']
     mGuid = creds['san-diego-demo']['model_id']
@@ -538,11 +557,11 @@ def full_run_main(num_time_predict=30, dry_run=True, verbose=False):
         model_run_df = pd.DataFrame([model_run_timestamp], columns=['date'])
         model_run_filename = "date_model_ran.csv"
         model_run_filepath = os.path.join(tmp_path, model_run_filename)
-        pd.DataFrame.to_csv(model_run_df, model_run_filepath, index=False)
+        pd.DataFrame.to_csv(model_run_df, model_run_filepath, index=False)  # TODO: Refactor to use Blob storage?
 
         model_run_file_size = filesize_to_chunks(model_run_filepath)
 
-        model_timestamp_data_file = open(model_run_filepath, 'r').read().encode('utf-8')
+        model_timestamp_data_file = open(model_run_filepath, 'r').read().encode('utf-8')  # TODO: Refactor to use Blob storage?
 
         model_run_timestamp_file_id = creds['san-diego-demo']['model_run_timestamp_file_id']
         model_run_timestamp_import_id = creds['san-diego-demo']['model_run_timestamp_import_id']
@@ -581,7 +600,7 @@ def full_run_main_loop(timeout_min=5, num_time_predict=30, dry_run=False, verbos
     time_end = time_begin + (timeout_min*60)
 
     TokenObj = full_token_credentialing()
-    creds = load_creds()
+    creds = load_creds_env_var()
 
     user_trigger_status, user_trigger_status_message = anaplan_get_user_trigger_status(TokenObj, creds)
 

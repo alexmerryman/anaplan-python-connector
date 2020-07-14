@@ -14,6 +14,8 @@ import flask_app_helper_functions
 @app.route('/index')
 def index():
     user = {'username': 'Alex'}
+    full_run.load_creds_env_var()
+
     TokenObj = full_run.full_token_credentialing()  # Automatically run full credentialing on start
 
     return render_template('index.html', title='Anaplan-Python Connector Flask App', user=user)
