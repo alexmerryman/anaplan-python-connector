@@ -7,4 +7,4 @@ from flask_app import routes
 
 @app.route('/home')
 def home():
-    return "Hello world!"
+    return "Hello world! v2"
