@@ -7,6 +7,7 @@ import datetime
 import time
 import anaplan_connect_helper_functions
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+from http import cookies
 # import model_covid
 import flask_app_helper_functions
 
@@ -85,32 +86,68 @@ def generate_auth_token(verbose=False):
 
 
 def write_token_file(token_generated, token_auth_user, verbose=False):
-    if verbose:
-        print("Saving token to environment variable...")
-    os.environ["ANAPLAN_TOKEN"] = token_generated.text
+    c = cookies.SimpleCookie()
 
     if verbose:
-        print("Saving token auth user to environment variable...")
-    os.environ["ANAPLAN_TOKEN_AUTH_USER"] = token_auth_user
+        print("Saving token to cookie...")
+    # os.environ["ANAPLAN_TOKEN"] = token_generated.text
+    c['anaplan_token_cookie'] = token_generated.text
+
+    if verbose:
+        print("Saving token auth user to cookie...")
+    # os.environ["ANAPLAN_TOKEN_AUTH_USER"] = token_auth_user
+    c['anaplan_token_auth_user_cookie'] = token_auth_user
+    c['anaplan_token_auth_user_cookie']['max-age'] = 2100
+
+    print(c)
 
 
 def read_token_file(verbose=False):
+    # TODO: Create session?
+    #  s = requests.Session()
+    #  # all cookies received will be stored in the session object
+    #  s.post('http://www...',data=payload)
+    #  s.get('http://www...')
+    #  # https://requests.readthedocs.io/en/master/user/advanced/#session-objects
+
     if verbose:
-        print("Attempting to read token from environment variables...")
+        print("Attempting to read token from cookies...")
 
-    if not os.getenv("ANAPLAN_TOKEN"):
-        print(f"WARNING: No environment variable called `ANAPLAN_TOKEN` found.")
+    # for k,v in os.environ.items():
+    #     print(k)
+
+    if 'HTTP_COOKIE' in os.environ:
+        print('HTTP cookie found in environment variables.')
+
+        HTTP_COOKIE = os.getenv('HTTP_COOKIE')
+        print('env var:', HTTP_COOKIE)
+
+        c = cookies.SimpleCookie(HTTP_COOKIE)
+        print('cookie:', c)
+
+        c2 = cookies.SimpleCookie()
+        c2.load(HTTP_COOKIE)
+        print('cookie2:', c2)
+
+        if not c['anaplan_token']:
+            print(f"WARNING: No cookie called `anaplan_token` found.")
+            token_generated = None
+        else:
+            # token_generated = json.loads(os.getenv("ANAPLAN_TOKEN"))
+            token_generated = c['anaplan_token'].OutputString()
+            print(f"Successfully read `anaplan_token` from cookies.")
+
+        if not c['anaplan_token_auth_user_cookie']:
+            print(f"WARNING: No cookie called `anaplan_token_auth_user_cookie` found.")
+            token_auth_user = None
+        else:
+            # token_auth_user = os.getenv("ANAPLAN_TOKEN_AUTH_USER")
+            token_auth_user = c['anaplan_token_auth_user_cookie'].OutputString()
+            print(f"Successfully read `anaplan_token_auth_user_cookie` from cookies.")
+    else:
+        print("No HTTP cookie found.")
         token_generated = None
-    else:
-        token_generated = json.loads(os.getenv("ANAPLAN_TOKEN"))
-        print(f"Successfully read ANAPLAN_TOKEN from environment variables.")
-
-    if not os.getenv("ANAPLAN_TOKEN_AUTH_USER"):
-        print(f"WARNING: No environment variable called `ANAPLAN_TOKEN_AUTH_USER` found.")
         token_auth_user = None
-    else:
-        token_auth_user = os.getenv("ANAPLAN_TOKEN_AUTH_USER")
-        print(f"Successfully read ANAPLAN_TOKEN_AUTH_USER from environment variables.")
 
     return token_generated, token_auth_user
 
