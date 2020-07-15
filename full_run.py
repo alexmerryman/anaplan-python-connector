@@ -142,7 +142,7 @@ def full_token_credentialing(expiry_buffer=180, verbose=False):
 def anaplan_get_user_trigger_status(TokenObj, creds, verbose=False):
     wGuid = creds['san-diego-demo']['workspace_id']
     mGuid = creds['san-diego-demo']['model_id']
-    user_trigger_export_id = creds['san-diego-demo']['user_trigger_export_id']
+    user_trigger_export_id = creds['san-diego-demo']['user_trigger_file_id']
 
     if verbose:
         print('Getting user trigger status chunk metadata...')
@@ -181,7 +181,7 @@ def anaplan_get_user_trigger_status(TokenObj, creds, verbose=False):
 def anaplan_reset_user_trigger_status(TokenObj, creds, verbose=False):
     wGuid = creds['san-diego-demo']['workspace_id']
     mGuid = creds['san-diego-demo']['model_id']
-    user_trigger_export_id = creds['san-diego-demo']['user_trigger_export_id']
+    user_trigger_export_id = creds['san-diego-demo']['user_trigger_file_id']
 
     # TODO: This requires PUT & POST actions?
 
