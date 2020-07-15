@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\Users\Alexander Merryman\PycharmProjects\covid-modeling-anaplan\venv"
+VIRTUAL_ENV="E:\D Drive\Learning Initiative\anaplan connector disabled\anaplan-python-connector\venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

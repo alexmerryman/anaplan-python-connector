@@ -27,7 +27,7 @@ function global:deactivate ([switch]$NonDestructive) {
 
 deactivate -nondestructive
 
-$env:VIRTUAL_ENV="C:\Users\Alexander Merryman\PycharmProjects\covid-modeling-anaplan\venv"
+$env:VIRTUAL_ENV="E:\D Drive\Learning Initiative\anaplan connector disabled\anaplan-python-connector\venv"
 
 if (! $env:VIRTUAL_ENV_DISABLE_PROMPT) {
     # Set the prompt to include the env name
