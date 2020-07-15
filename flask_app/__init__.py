@@ -12,7 +12,9 @@ import flask_app_helper_functions
 
 @app.route('/')
 def home():
-    return render_template('index.html', title='Anaplan-Python Connector Flask App')
+    user = {'username': 'Alex'}
+
+    return render_template('index.html', title='Anaplan-Python Connector Flask App', user=user)
 
 
 @app.route('/index')
