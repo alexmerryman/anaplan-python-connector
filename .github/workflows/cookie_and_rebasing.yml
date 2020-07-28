@@ -1,0 +1,35 @@
+name: Build and deploy Python app to Azure Web App - teklink-anaplan-covid-2
+
+on:
+  push:
+    branches: [ cookie_and_rebasing ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    - name: Set up Python version
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.7'
+        
+    - name: Build using AppService-Build
+      uses: azure/appservice-build@v1
+      with:
+        platform: python
+        platform-version: '3.7'
+
+    - name: 'Deploy to Azure Web App'
+      uses: azure/webapps-deploy@v1
+      with:
+        app-name: 'teklink-anaplan-covid-2'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_cd8852bcd80a4280b9056d9ca5a80281 }}
