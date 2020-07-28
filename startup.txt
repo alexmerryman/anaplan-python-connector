@@ -1,0 +1,1 @@
+az webapp config appsettings set --resource-group rg-teklink-innovation-demo --name teklink-anaplan-python-covid-2 --settings WEBSITES_PORT=8000 --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 --chdir flask_app __init__:app"

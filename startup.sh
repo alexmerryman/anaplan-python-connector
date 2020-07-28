@@ -1,0 +1,1 @@
+gunicorn --bind=0.0.0.0 --timeout 600 --chdir flask_app __init__:app
